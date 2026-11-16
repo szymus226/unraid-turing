@@ -184,7 +184,7 @@ def test_pierwsza_klatka_w_calosci():
 
 # --- ustawienia ---
 def test_ustawienia_zapis_i_odczyt(tmp_path: Path):
-    zapisz(Ustawienia(jasnosc=150, jezyk="de", orientacja="poziomo"), tmp_path)
+    zapisz(Ustawienia(jasnosc=150, jezyk="de", orientacja="bokiem"), tmp_path)
     u = wczytaj(tmp_path)
     assert (u.jasnosc, u.jezyk, u.orientacja) == (100, "pl", "pionowo")
 
