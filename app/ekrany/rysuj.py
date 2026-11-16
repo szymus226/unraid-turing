@@ -9,6 +9,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 W, H = 320, 480
+# Margines od krawędzi ekranu (ramka obudowy zasłania skrajne piksele).
+M = 18
 # Czcionka Inter (licencja OFL) z pakietu fonts-inter instalowanego w obrazie Dockera.
 FONT_DIR = os.environ.get("LCD_CZCIONKI", "/usr/share/fonts/opentype/inter/").rstrip("/") + "/"
 
@@ -77,8 +79,8 @@ def kolor_progu(wartosc, uwaga, alarm):
 
 def naglowek(d, tytul, indeks, dane):
     d.rectangle((0, 0, W, 40), fill=KOLORY["karta"])
-    d.text((14, 20), tytul, font=font(18, "Bold"), fill=KOLORY["tekst"], anchor="lm")
-    d.text((W - 14, 20), dane["godzina"], font=font(16, "SemiBold"), fill=KOLORY["szary"], anchor="rm")
+    d.text((M, 20), tytul, font=font(18, "Bold"), fill=KOLORY["tekst"], anchor="lm")
+    d.text((W - M, 20), dane["godzina"], font=font(16, "SemiBold"), fill=KOLORY["szary"], anchor="rm")
     # kropki widoków (który ekran z pięciu)
     for i in range(5):
         x = W // 2 + 18 + i * 12
@@ -105,77 +107,81 @@ def ekran_system(t, dane):
     img = Image.new("RGB", (W, H), KOLORY["tlo"]); d = ImageDraw.Draw(img)
     naglowek(d, t["system"], 0, dane)
     # duży wskaźnik CPU
-    luk(d, 92, 128, 64, dane["cpu"], kolor_progu(dane["cpu"], 70, 90))
-    d.text((92, 122), f"{dane['cpu']:.0f}%", font=font(34, "Bold"), fill=KOLORY["tekst"], anchor="mm")
-    d.text((92, 156), t["cpu"], font=font(14, "SemiBold"), fill=KOLORY["szary"], anchor="mm")
-    # temperatura CPU
+    luk(d, M + 74, 120, 60, dane["cpu"], kolor_progu(dane["cpu"], 70, 90))
+    d.text((M + 74, 114), f"{dane['cpu']:.0f}%", font=font(32, "Bold"), fill=KOLORY["tekst"], anchor="mm")
+    d.text((M + 74, 146), t["cpu"], font=font(14, "SemiBold"), fill=KOLORY["szary"], anchor="mm")
+    # temperatura CPU i czas pracy
     temp = dane["cpu_temp"]
     kt = kolor_progu(temp, 70, 85) if temp is not None else KOLORY["szary"]
-    karta(d, 178, 58, 128, 66)
-    d.text((190, 72), t["temp"] + " CPU", font=font(13), fill=KOLORY["szary"])
-    d.text((190, 92), f"{temp:.0f}°C" if temp is not None else "—", font=font(28, "Bold"), fill=kt)
-    karta(d, 178, 132, 128, 58)
-    d.text((190, 142), t["uptime"], font=font(13), fill=KOLORY["szary"])
-    d.text((190, 160), dane["uptime"], font=font(22, "Bold"), fill=KOLORY["tekst"])
+    x0 = W - M - 126
+    karta(d, x0, 54, 126, 62)
+    d.text((x0 + 12, 66), t["temp"] + " CPU", font=font(13), fill=KOLORY["szary"])
+    d.text((x0 + 12, 84), f"{temp:.0f}°C" if temp is not None else "—", font=font(26, "Bold"), fill=kt)
+    karta(d, x0, 124, 126, 56)
+    d.text((x0 + 12, 133), t["uptime"], font=font(13), fill=KOLORY["szary"])
+    d.text((x0 + 12, 151), dane["uptime"], font=font(21, "Bold"), fill=KOLORY["tekst"])
     # rdzenie
-    y0 = 206
-    n = len(dane["rdzenie"]); szer = (W - 28 - (n - 1) * 4) / n
+    y0, wys = 194, 36
+    n = len(dane["rdzenie"]); szer = (W - 2 * M - (n - 1) * 4) / n
     for i, v in enumerate(dane["rdzenie"]):
-        x = 14 + i * (szer + 4)
-        d.rectangle((x, y0, x + szer, y0 + 40), fill=KOLORY["linia"])
-        h = int(40 * v / 100)
-        d.rectangle((x, y0 + 40 - h, x + szer, y0 + 40), fill=kolor_progu(v, 70, 90))
+        x = M + i * (szer + 4)
+        d.rectangle((x, y0, x + szer, y0 + wys), fill=KOLORY["linia"])
+        h = int(wys * v / 100)
+        d.rectangle((x, y0 + wys - h, x + szer, y0 + wys), fill=kolor_progu(v, 70, 90))
     # wykres historii CPU
-    karta(d, 14, 258, W - 28, 64)
-    hist = dane["historia_cpu"]; krok = (W - 48) / (len(hist) - 1)
-    pkt = [(24 + i * krok, 312 - v * 0.5) for i, v in enumerate(hist)]
+    karta(d, M, 242, W - 2 * M, 58)
+    hist = dane["historia_cpu"]; krok = (W - 2 * M - 20) / (len(hist) - 1)
+    pkt = [(M + 10 + i * krok, 292 - v * 0.42) for i, v in enumerate(hist)]
     d.line(pkt, fill=KOLORY["akcent"], width=2)
     # RAM i SWAP
-    y = 336
-    d.text((14, y), t["ram"], font=font(15, "SemiBold"), fill=KOLORY["tekst"])
-    d.text((W - 14, y), f"{dane['ram_txt']}  {dane['ram']:.0f}%", font=font(15, "SemiBold"), fill=KOLORY["tekst"], anchor="ra")
-    pasek(d, 14, y + 24, W - 28, 12, dane["ram"], kolor_progu(dane["ram"], 80, 92))
-    y = 382
-    d.text((14, y), t["swap"], font=font(15, "SemiBold"), fill=KOLORY["szary"])
+    y = 314
+    d.text((M, y), t["ram"], font=font(15, "SemiBold"), fill=KOLORY["tekst"])
+    d.text((W - M, y), f"{dane['ram_txt']}  {dane['ram']:.0f}%", font=font(15, "SemiBold"), fill=KOLORY["tekst"], anchor="ra")
+    pasek(d, M, y + 24, W - 2 * M, 12, dane["ram"], kolor_progu(dane["ram"], 80, 92))
+    y = 364
+    d.text((M, y), t["swap"], font=font(15, "SemiBold"), fill=KOLORY["szary"])
     if dane.get("swap") is None:
-        d.text((W - 14, y), "—", font=font(15, "SemiBold"), fill=KOLORY["szary"], anchor="ra")
+        d.text((W - M, y), "—", font=font(15, "SemiBold"), fill=KOLORY["szary"], anchor="ra")
     else:
-        d.text((W - 14, y), f"{dane['swap']:.0f}%", font=font(15, "SemiBold"), fill=KOLORY["tekst"], anchor="ra")
+        d.text((W - M, y), f"{dane['swap']:.0f}%", font=font(15, "SemiBold"), fill=KOLORY["tekst"], anchor="ra")
     # load i sieć
-    karta(d, 14, 410, 140, 58); karta(d, 166, 410, 140, 58)
-    d.text((24, 418), t["load"], font=font(12), fill=KOLORY["szary"])
-    d.text((24, 438), "  ".join(liczba(v, t["_j"], 2) for v in dane["load"]), font=font(15, "SemiBold"), fill=KOLORY["tekst"])
-    d.text((176, 418), t["siec"], font=font(12), fill=KOLORY["szary"])
-    d.text((176, 434), f"↓ {dane['rx']}", font=font(13, "SemiBold"), fill=KOLORY["ok"])
-    d.text((176, 450), f"↑ {dane['tx']}", font=font(13, "SemiBold"), fill=KOLORY["akcent"])
+    szer = (W - 2 * M - 12) // 2
+    y = 400
+    karta(d, M, y, szer, 58); karta(d, W - M - szer, y, szer, 58)
+    d.text((M + 10, y + 8), t["load"], font=font(12), fill=KOLORY["szary"])
+    d.text((M + 10, y + 28), "  ".join(liczba(v, t["_j"], 2) for v in dane["load"]), font=font(15, "SemiBold"), fill=KOLORY["tekst"])
+    x = W - M - szer + 10
+    d.text((x, y + 8), t["siec"], font=font(12), fill=KOLORY["szary"])
+    d.text((x, y + 24), f"↓ {dane['rx']}", font=font(13, "SemiBold"), fill=KOLORY["ok"])
+    d.text((x, y + 40), f"↑ {dane['tx']}", font=font(13, "SemiBold"), fill=KOLORY["akcent"])
     return img
 
 
 def ekran_dyski(t, dane):
     img = Image.new("RGB", (W, H), KOLORY["tlo"]); d = ImageDraw.Draw(img)
     naglowek(d, t["dyski"], 1, dane)
-    d.ellipse((14, 58, 28, 72), fill=KOLORY["ok"])
-    d.text((36, 65), f"{t['array']}: {t['uruchomiony']}", font=font(16, "SemiBold"), fill=KOLORY["tekst"], anchor="lm")
+    d.ellipse((M, 58, M + 14, 72), fill=KOLORY["ok"])
+    d.text((M + 22, 65), f"{t['array']}: {t['uruchomiony']}", font=font(16, "SemiBold"), fill=KOLORY["tekst"], anchor="lm")
     for i, (nazwa, proc, txt) in enumerate([(t["array"], dane["array_uzycie"], dane["array_txt"]),
                                              (t["cache"], dane["cache_uzycie"], dane["cache_txt"])]):
         y = 88 + i * 62
-        karta(d, 14, y, W - 28, 54)
-        d.text((26, y + 10), nazwa, font=font(14, "SemiBold"), fill=KOLORY["tekst"])
-        d.text((W - 26, y + 10), f"{txt}  {proc}%", font=font(14, "SemiBold"), fill=KOLORY["tekst"], anchor="ra")
-        pasek(d, 26, y + 34, W - 52, 10, proc, kolor_progu(proc, 85, 95))
+        karta(d, M, y, W - 2 * M, 54)
+        d.text((M + 12, y + 10), nazwa, font=font(14, "SemiBold"), fill=KOLORY["tekst"])
+        d.text((W - M - 12, y + 10), f"{txt}  {proc}%", font=font(14, "SemiBold"), fill=KOLORY["tekst"], anchor="ra")
+        pasek(d, M + 12, y + 34, W - 2 * M - 24, 10, proc, kolor_progu(proc, 85, 95))
     aktywne = sum(1 for x in dane["dyski"] if x[3])
-    d.text((14, 222), f"{aktywne} {t['aktywne']} · {len(dane['dyski']) - aktywne} {t['uspione']}",
+    d.text((M, 222), f"{aktywne} {t['aktywne']} · {len(dane['dyski']) - aktywne} {t['uspione']}",
            font=font(13), fill=KOLORY["szary"])
     for i, (nazwa, temp, smart, aktywny) in enumerate(dane["dyski"]):
-        y = 246 + i * 37
-        d.line((14, y + 34, W - 14, y + 34), fill=KOLORY["linia"])
-        d.ellipse((16, y + 11, 28, y + 23), fill=KOLORY[smart] if aktywny else KOLORY["linia"])
-        d.text((38, y + 17), nazwa, font=font(16, "SemiBold"), fill=KOLORY["tekst"] if aktywny else KOLORY["szary"], anchor="lm")
+        y = 240 + i * 36
+        d.line((M, y + 34, W - M, y + 34), fill=KOLORY["linia"])
+        d.ellipse((M + 2, y + 11, M + 14, y + 23), fill=KOLORY[smart] if aktywny else KOLORY["linia"])
+        d.text((M + 24, y + 17), nazwa, font=font(16, "SemiBold"), fill=KOLORY["tekst"] if aktywny else KOLORY["szary"], anchor="lm")
         tekst = f"{temp}°C" if aktywny else "—"
         kolor = kolor_progu(temp, 45, 50) if aktywny else KOLORY["szary"]
-        d.text((W - 16, y + 17), tekst, font=font(20, "Bold"), fill=kolor, anchor="rm")
+        d.text((W - M - 2, y + 17), tekst, font=font(20, "Bold"), fill=kolor, anchor="rm")
         if aktywny:
-            d.text((W - 92, y + 17), "SMART", font=font(11, "SemiBold"),
+            d.text((W - M - 78, y + 17), "SMART", font=font(11, "SemiBold"),
                fill=KOLORY[smart] if smart != "ok" else KOLORY["szary"], anchor="rm")
     return img
 
@@ -184,24 +190,24 @@ def ekran_docker(t, dane):
     img = Image.new("RGB", (W, H), KOLORY["tlo"]); d = ImageDraw.Draw(img)
     naglowek(d, t["docker"], 2, dane)
     dz, wsz = dane["kontenery_dzialaja"], dane["kontenery_wszystkie"]
-    karta(d, 14, 54, W - 28, 84)
-    d.text((28, 64), t["kontenery"], font=font(14), fill=KOLORY["szary"])
-    d.text((28, 84), str(dz), font=font(44, "Bold"), fill=KOLORY["ok"])
-    d.text((100, 106), f"/ {wsz} {t['dzialaja']}", font=font(16, "SemiBold"), fill=KOLORY["szary"])
-    d.text((W - 28, 106), f"{wsz - dz} {t['zatrzymane']}", font=font(14, "SemiBold"), fill=KOLORY["uwaga"], anchor="ra")
+    karta(d, M, 54, W - 2 * M, 84)
+    d.text((M + 14, 64), t["kontenery"], font=font(14), fill=KOLORY["szary"])
+    d.text((M + 14, 84), str(dz), font=font(44, "Bold"), fill=KOLORY["ok"])
+    d.text((M + 86, 106), f"/ {wsz} {t['dzialaja']}", font=font(16, "SemiBold"), fill=KOLORY["szary"])
+    d.text((W - 2 * M, 106), f"{wsz - dz} {t['zatrzymane']}", font=font(14, "SemiBold"), fill=KOLORY["uwaga"], anchor="ra")
     for i, (nazwa, stan, cpu, ram) in enumerate(dane["kontenery"]):
         y = 150 + i * 40
-        d.line((14, y + 37, W - 14, y + 37), fill=KOLORY["linia"])
-        d.ellipse((16, y + 12, 28, y + 24), fill=KOLORY[stan])
-        d.text((38, y + 18), nazwa, font=font(16, "SemiBold"), fill=KOLORY["tekst"], anchor="lm")
-        d.text((W - 16, y + 18), ram, font=font(13), fill=KOLORY["szary"], anchor="rm")
-        d.text((W - 90, y + 18), f"{liczba(cpu, t['_j'])}%", font=font(14, "SemiBold"), fill=KOLORY["tekst"], anchor="rm")
-    y = 396
-    d.text((14, y), t["maszyny"], font=font(14), fill=KOLORY["szary"])
+        d.line((M, y + 37, W - M, y + 37), fill=KOLORY["linia"])
+        d.ellipse((M + 2, y + 12, M + 14, y + 24), fill=KOLORY[stan])
+        d.text((M + 24, y + 18), nazwa, font=font(16, "SemiBold"), fill=KOLORY["tekst"], anchor="lm")
+        d.text((W - M - 2, y + 18), ram, font=font(13), fill=KOLORY["szary"], anchor="rm")
+        d.text((W - M - 76, y + 18), f"{liczba(cpu, t['_j'])}%", font=font(14, "SemiBold"), fill=KOLORY["tekst"], anchor="rm")
+    y = 392
+    d.text((M, y), t["maszyny"], font=font(14), fill=KOLORY["szary"])
     for i, (nazwa, stan) in enumerate(dane["vm"]):
         yy = y + 24 + i * 26
-        d.ellipse((16, yy + 4, 26, yy + 14), fill=KOLORY[stan])
-        d.text((36, yy + 9), nazwa, font=font(15, "SemiBold"), fill=KOLORY["tekst"], anchor="lm")
+        d.ellipse((M + 2, yy + 4, M + 12, yy + 14), fill=KOLORY[stan])
+        d.text((M + 22, yy + 9), nazwa, font=font(15, "SemiBold"), fill=KOLORY["tekst"], anchor="lm")
     return img
 
 
@@ -215,10 +221,10 @@ def ekran_parity(t, dane):
     for i, (etyk, wart, kol) in enumerate([(t["predkosc"], dane["parity_predkosc"], KOLORY["tekst"]),
                                             (t["koniec"], dane["parity_eta"], KOLORY["tekst"]),
                                             (t["bledy"], str(dane["parity_bledy"]), KOLORY["ok"])]):
-        y = 314 + i * 52
-        karta(d, 14, y, W - 28, 44)
-        d.text((28, y + 22), etyk, font=font(15), fill=KOLORY["szary"], anchor="lm")
-        d.text((W - 28, y + 22), wart, font=font(22, "Bold"), fill=kol, anchor="rm")
+        y = 306 + i * 52
+        karta(d, M, y, W - 2 * M, 44)
+        d.text((M + 14, y + 22), etyk, font=font(15), fill=KOLORY["szary"], anchor="lm")
+        d.text((W - M - 14, y + 22), wart, font=font(22, "Bold"), fill=kol, anchor="rm")
     return img
 
 
@@ -232,10 +238,10 @@ def ekran_alerty(t, dane, puste=False):
         return img
     for i, (poziom, tytul, opis) in enumerate(dane["alerty"]):
         y = 56 + i * 82
-        karta(d, 14, y, W - 28, 72)
-        d.rounded_rectangle((14, y, 22, y + 72), radius=4, fill=KOLORY[poziom])
-        d.text((34, y + 14), tytul, font=font(19, "Bold"), fill=KOLORY[poziom])
-        d.text((34, y + 44), opis, font=font(14), fill=KOLORY["szary"])
+        karta(d, M, y, W - 2 * M, 72)
+        d.rounded_rectangle((M, y, M + 8, y + 72), radius=4, fill=KOLORY[poziom])
+        d.text((M + 20, y + 14), tytul, font=font(19, "Bold"), fill=KOLORY[poziom])
+        d.text((M + 20, y + 44), opis, font=font(14), fill=KOLORY["szary"])
     return img
 
 
