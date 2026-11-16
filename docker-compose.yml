@@ -1,0 +1,26 @@
+# Monitor LCD dla Unraid / LCD monitor for Unraid
+# Bez trybu privileged: kontener widzi /dev hosta tylko do odczytu, a reguła cgroup
+# pozwala otwierać wyłącznie porty szeregowe USB ACM (major 166), czyli ekran.
+# No privileged mode: host /dev is read-only and the cgroup rule only allows USB ACM serial ports (major 166).
+services:
+  unraid-lcd:
+    build: .
+    container_name: unraid-lcd
+    restart: unless-stopped
+    ports:
+      - "8765:8765"            # panel WWW tylko w sieci domowej / web panel, home network only
+    volumes:
+      - /mnt/user/appdata/unraid-lcd:/config
+      - /dev:/dev-host:ro
+      - /proc:/host/proc:ro
+    device_cgroup_rules:
+      - "c 166:* rw"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 160m
+    cpus: 0.5

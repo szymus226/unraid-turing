@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><title>Unraid LCD</title>
+<style>
+:root{--bg:#0b0f19;--nav-bg:#060a14;--karta:#161c2a;--linia:#283042;--tekst:#e8ecf4;--szary:#8c96aa;--ok:#34c778;--uwaga:#f5b428;--alarm:#f04646;--akcent:#4696ff}
+*{box-sizing:border-box}body{margin:0;font:14px Inter,sans-serif;background:var(--bg);color:var(--tekst);display:flex;min-height:100vh}
+nav{width:220px;background:var(--nav-bg);padding:14px 10px;border-right:1px solid var(--linia)}
+nav h1{font-size:16px;margin:4px 8px 16px;display:flex;gap:8px;align-items:center}
+nav a{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:6px;color:var(--szary);text-decoration:none;margin-bottom:2px}
+nav a.on{background:var(--karta);color:var(--tekst)}
+nav .stan{margin-top:24px;padding:10px;border-radius:8px;background:var(--karta);font-size:12px;color:var(--szary)}
+main{flex:1;padding:18px 22px}
+.pasek{display:flex;align-items:center;gap:8px;margin-bottom:16px}.pasek h2{font-size:18px;margin:0;flex:1}
+.btn{background:var(--karta);border:1px solid var(--linia);color:var(--tekst);border-radius:6px;padding:6px 12px;font:inherit;display:inline-flex;gap:6px;align-items:center}
+.btn.ikona{padding:6px 8px}.btn.glowny{background:var(--akcent);border-color:var(--akcent)}
+.siatka{display:grid;grid-template-columns:auto 1fr;gap:18px}
+.karta{background:var(--karta);border:1px solid var(--linia);border-radius:10px;padding:14px}
+.karta h3{margin:0 0 10px;font-size:13px;color:var(--szary);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.lcd{width:320px;height:480px;border-radius:6px;display:block;border:6px solid #000}
+.wiersz{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--linia)}.wiersz:last-child{border:0}
+.wiersz .et{flex:1;color:var(--szary)}.pomoc{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--szary);font-size:10px;color:var(--szary);margin-left:4px}
+.kropka{width:9px;height:9px;border-radius:50%;display:inline-block}
+input[type=range]{width:180px;accent-color:var(--akcent)}select,input[type=number],input[type=text]{background:var(--bg);border:1px solid var(--linia);color:var(--tekst);border-radius:6px;padding:5px 8px;font:inherit}
+.karty-wyboru{display:flex;gap:10px}.kw{position:relative;flex:1;border:2px solid var(--linia);border-radius:10px;padding:12px;text-align:center;font-weight:600}.kw.on{border-color:var(--akcent)}
+.kw .odz{position:absolute;top:6px;right:8px;font-size:10px;color:var(--akcent)}
+.kw .mini{width:28px;height:42px;border:2px solid var(--szary);border-radius:3px;margin:0 auto 6px}.kw .mini.poziomo{width:42px;height:28px;margin-top:7px;margin-bottom:13px}
+.miniatury{display:flex;gap:10px;flex-wrap:wrap}.min{width:120px}.min img{width:120px;border-radius:4px;border:2px solid var(--linia)}.min.on img{border-color:var(--akcent)}
+.min div{display:flex;justify-content:space-between;font-size:12px;color:var(--szary);margin-top:4px}
+table{width:100%;border-collapse:collapse}td,th{padding:7px 6px;border-bottom:1px solid var(--linia);text-align:left}th{color:var(--szary);font-weight:600;font-size:12px}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.znacznik{font-size:11px;padding:2px 7px;border-radius:10px;background:#16341f;color:var(--ok);white-space:nowrap}.znacznik.u{background:#3a2f10;color:var(--uwaga)}
+.log{font:12px ui-monospace,monospace;color:var(--szary);line-height:1.6}
+.lang{font-size:12px;color:var(--szary)}
+</style></head><body>
+<nav>
+  <h1><span class="kropka" style="background:var(--ok)"></span><span data-t="Unraid LCD|Unraid LCD"></span></h1>
+  <a href="#" class="on" data-s="podglad">🖥 <span data-t="Podgląd|Preview"></span></a>
+  <a href="#" data-s="ekrany">▦ <span data-t="Ekrany i układy|Screens & layouts"></span></a>
+  <a href="#" data-s="dane">☷ <span data-t="Dyski i kontenery|Disks & containers"></span></a>
+  <a href="#" data-s="alarmy">⚠ <span data-t="Progi alarmowe|Alert thresholds"></span></a>
+  <a href="#" data-s="urzadzenie">⇄ <span data-t="Urządzenie USB|USB device"></span></a>
+  <a href="#" data-s="motywy">◐ <span data-t="Motywy|Themes"></span></a>
+  <a href="#" data-s="logi">≡ <span data-t="Logi|Logs"></span></a>
+  <div class="stan"><div><span class="kropka" style="background:var(--ok)"></span> <span data-t="Ekran połączony|Display connected"></span></div>
+  <div style="margin-top:4px">Turing 3,5" · rev A · /dev/ttyACM0</div>
+  <div style="margin-top:4px" data-t="Tylko sieć domowa|Home network only"></div></div>
+</nav>
+<main>
+<!-- PODGLĄD -->
+<section id="podglad">
+  <div class="pasek"><h2 data-t="Podgląd|Preview"></h2>
+    <button class="btn ikona" title="Poprzedni ekran / Previous screen">◀</button>
+    <button class="btn ikona" title="Wstrzymaj przełączanie / Pause rotation">⏸</button>
+    <button class="btn ikona" title="Następny ekran / Next screen">▶</button></div>
+  <div class="siatka">
+    <div><img class="lcd" src="png/lcd-pl-1-system.png" data-src="png/lcd-{j}-1-system.png"></div>
+    <div style="display:grid;gap:14px;align-content:start">
+      <div class="karta"><h3 data-t="Wyświetlanie|Display"></h3>
+        <div class="wiersz"><span class="et" data-t="Jasność|Brightness"></span><input type="range" value="60"><span>60%</span></div>
+        <div class="wiersz"><span class="et"><span data-t="Odświeżanie danych|Data refresh"></span><span class="pomoc" title="Częściej = większe obciążenie CPU i USB / More often = more CPU and USB load">?</span></span><select><option>2 s</option></select></div>
+        <div class="wiersz"><span class="et" data-t="Przełączanie ekranów|Screen rotation"></span><select><option data-t="co 10 s|every 10 s"></option></select></div>
+        <div class="wiersz"><span class="et" data-t="Język ekranu|Display language"></span><select><option>Polski</option><option>English</option></select></div>
+        <div class="wiersz"><span class="et" data-t="Wyłącz ekran nocą|Turn off at night"></span><span>23:00 – 07:00</span></div>
+      </div>
+      <div class="karta"><h3 data-t="Obrót ekranu|Rotation"></h3>
+        <div class="karty-wyboru">
+          <div class="kw on"><span class="odz" data-t="domyślny|default"></span><div class="mini"></div><span data-t="Pionowo|Portrait"></span></div>
+          <div class="kw"><div class="mini" style="transform:rotate(180deg)"></div><span data-t="Pionowo, odwrócony|Portrait, flipped"></span></div>
+          <div class="kw"><div class="mini poziomo"></div><span data-t="Poziomo|Landscape"></span></div>
+          <div class="kw"><div class="mini poziomo"></div><span data-t="Poziomo, odwrócony|Landscape, flipped"></span></div>
+        </div></div>
+      <div class="karta"><h3 data-t="Odczyt danych|Data sources"></h3>
+        <div class="wiersz"><span class="et">Unraid API</span><span class="znacznik">OK · 2 s</span></div>
+        <div class="wiersz"><span class="et">Docker (socket proxy, <span data-t="tylko odczyt|read only"></span>)</span><span class="znacznik">OK</span></div>
+        <div class="wiersz"><span class="et" data-t="Czujniki temperatury|Temperature sensors"></span><span class="znacznik">OK</span></div>
+        <div class="wiersz"><span class="et" data-t="Zużycie przez aplikację|App usage"></span><span>CPU 0,4% · RAM 48 MB</span></div>
+      </div>
+    </div></div>
+</section>
+<!-- EKRANY -->
+<section id="ekrany">
+  <div class="pasek"><h2 data-t="Ekrany i układy|Screens & layouts"></h2>
+    <button class="btn" data-t="+ Dodaj ekran|+ Add screen"></button><button class="btn glowny" data-t="Zapisz|Save"></button></div>
+  <div class="karta" style="margin-bottom:14px"><h3 data-t="Kolejność i czas wyświetlania|Order and display time"></h3>
+    <div class="miniatury">
+      <div class="min on"><img data-src="png/lcd-{j}-1-system.png"><div><span>1 · System</span><span>10 s</span></div></div>
+      <div class="min"><img data-src="png/lcd-{j}-2-dyski.png"><div><span data-t="2 · Dyski|2 · Disks"></span><span>10 s</span></div></div>
+      <div class="min"><img data-src="png/lcd-{j}-3-docker.png"><div><span>3 · Docker</span><span>10 s</span></div></div>
+      <div class="min"><img data-src="png/lcd-{j}-4-parity.png"><div><span data-t="4 · Parity (gdy trwa)|4 · Parity (when running)"></span><span>15 s</span></div></div>
+      <div class="min"><img data-src="png/lcd-{j}-5-alerty.png"><div><span data-t="5 · Alerty|5 · Alerts"></span><span>10 s</span></div></div>
+    </div></div>
+  <div class="siatka">
+    <img class="lcd" data-src="png/lcd-{j}-1-system.png">
+    <div class="karta"><h3 data-t="Elementy ekranu „System”|“System” screen elements"></h3>
+      <table><tr><th data-t="Element|Element"></th><th data-t="Parametr|Metric"></th><th data-t="Wygląd|Style"></th><th></th></tr>
+      <tr><td data-t="Wskaźnik duży|Large gauge"></td><td><select><option data-t="Obciążenie CPU|CPU load"></option></select></td><td data-t="łuk|arc"></td><td><button class="btn ikona" title="Usuń / Remove" style="color:var(--alarm)">🗑</button></td></tr>
+      <tr><td data-t="Kafelek 1|Tile 1"></td><td><select><option data-t="Temperatura CPU|CPU temperature"></option></select></td><td data-t="liczba|number"></td><td><button class="btn ikona" title="Usuń / Remove" style="color:var(--alarm)">🗑</button></td></tr>
+      <tr><td data-t="Kafelek 2|Tile 2"></td><td><select><option data-t="Czas pracy|Uptime"></option></select></td><td data-t="liczba|number"></td><td><button class="btn ikona" title="Usuń / Remove" style="color:var(--alarm)">🗑</button></td></tr>
+      <tr><td data-t="Słupki|Bars"></td><td><select><option data-t="Rdzenie CPU|CPU cores"></option></select></td><td data-t="słupki|bars"></td><td><button class="btn ikona" title="Usuń / Remove" style="color:var(--alarm)">🗑</button></td></tr>
+      <tr><td data-t="Wykres|Chart"></td><td><select><option data-t="CPU, ostatnie 60 s|CPU, last 60 s"></option></select></td><td data-t="linia|line"></td><td><button class="btn ikona" title="Usuń / Remove" style="color:var(--alarm)">🗑</button></td></tr>
+      <tr><td data-t="Paski|Bars"></td><td><select><option>RAM, SWAP</option></select></td><td data-t="pasek|bar"></td><td><button class="btn ikona" title="Usuń / Remove" style="color:var(--alarm)">🗑</button></td></tr>
+      <tr><td data-t="Kafelki dolne|Bottom tiles"></td><td><select><option data-t="Load, sieć LAN|Load, LAN"></option></select></td><td data-t="liczba|number"></td><td><button class="btn ikona" title="Usuń / Remove" style="color:var(--alarm)">🗑</button></td></tr>
+      </table></div></div>
+</section>
+<!-- DYSKI I KONTENERY -->
+<section id="dane">
+  <div class="pasek"><h2 data-t="Dyski i kontenery|Disks & containers"></h2><button class="btn glowny" data-t="Zapisz|Save"></button></div>
+  <div class="siatka" style="grid-template-columns:1fr 1fr">
+    <div class="karta"><h3 data-t="Dyski na ekranie|Disks on screen"></h3><table>
+      <tr><th></th><th data-t="Dysk|Disk"></th><th data-t="Rola|Role"></th><th class="num">Temp.</th><th>SMART</th></tr>
+      <tr><td><input type="checkbox" checked></td><td>Parity</td><td>parity</td><td class="num">34°C</td><td><span class="znacznik">OK</span></td></tr>
+      <tr><td><input type="checkbox" checked></td><td>Disk 1</td><td>array</td><td class="num">36°C</td><td><span class="znacznik">OK</span></td></tr>
+      <tr><td><input type="checkbox" checked></td><td>Disk 2</td><td>array</td><td class="num">—</td><td><span class="znacznik">OK</span></td></tr>
+      <tr><td><input type="checkbox" checked></td><td>Disk 3</td><td>array</td><td class="num">47°C</td><td><span class="znacznik u" data-t="uwaga|warning"></span></td></tr>
+      <tr><td><input type="checkbox" checked></td><td>Disk 4</td><td>array</td><td class="num">—</td><td><span class="znacznik">OK</span></td></tr>
+      <tr><td><input type="checkbox" checked></td><td>Cache</td><td>pool</td><td class="num">41°C</td><td><span class="znacznik">OK</span></td></tr>
+    </table></div>
+    <div class="karta"><h3 data-t="Kontenery na ekranie (max 6)|Containers on screen (max 6)"></h3><table>
+      <tr><th></th><th data-t="Kontener|Container"></th><th data-t="Stan|State"></th><th class="num">CPU</th><th class="num">RAM</th></tr>
+      <tr><td><input type="checkbox" checked></td><td>plex</td><td><span class="znacznik" data-t="działa|running"></span></td><td class="num">6,1%</td><td class="num">1,2 GB</td></tr>
+      <tr><td><input type="checkbox" checked></td><td>immich</td><td><span class="znacznik" data-t="działa|running"></span></td><td class="num">3,4%</td><td class="num">2,1 GB</td></tr>
+      <tr><td><input type="checkbox" checked></td><td>nextcloud</td><td><span class="znacznik" data-t="działa|running"></span></td><td class="num">1,2%</td><td class="num">640 MB</td></tr>
+      <tr><td><input type="checkbox" checked></td><td>adguard</td><td><span class="znacznik" data-t="działa|running"></span></td><td class="num">0,3%</td><td class="num">120 MB</td></tr>
+      <tr><td><input type="checkbox" checked></td><td>paperless</td><td><span class="znacznik u" data-t="zatrzymany|stopped"></span></td><td class="num">—</td><td class="num">—</td></tr>
+      <tr><td><input type="checkbox" checked></td><td>homelabber</td><td><span class="znacznik" data-t="działa|running"></span></td><td class="num">0,8%</td><td class="num">310 MB</td></tr>
+      <tr><td><input type="checkbox"></td><td>sabnzbd</td><td><span class="znacznik" data-t="działa|running"></span></td><td class="num">0,2%</td><td class="num">180 MB</td></tr>
+    </table></div></div>
+</section>
+<!-- ALARMY -->
+<section id="alarmy">
+  <div class="pasek"><h2 data-t="Progi alarmowe|Alert thresholds"></h2><button class="btn glowny" data-t="Zapisz|Save"></button></div>
+  <div class="karta" style="max-width:760px"><table>
+    <tr><th data-t="Parametr|Metric"></th><th class="num"><span class="kropka" style="background:var(--uwaga)"></span> <span data-t="Ostrzeżenie|Warning"></span></th><th class="num"><span class="kropka" style="background:var(--alarm)"></span> <span data-t="Alarm|Alarm"></span></th><th data-t="Pokaż ekran Alerty od razu|Jump to Alerts screen"></th></tr>
+    <tr><td data-t="Temperatura CPU|CPU temperature"></td><td class="num"><input type="number" value="70" style="width:70px"> °C</td><td class="num"><input type="number" value="85" style="width:70px"> °C</td><td><input type="checkbox" checked></td></tr>
+    <tr><td data-t="Temperatura dysku HDD|HDD temperature"></td><td class="num"><input type="number" value="45" style="width:70px"> °C</td><td class="num"><input type="number" value="50" style="width:70px"> °C</td><td><input type="checkbox" checked></td></tr>
+    <tr><td data-t="Temperatura dysku SSD/NVMe|SSD/NVMe temperature"></td><td class="num"><input type="number" value="60" style="width:70px"> °C</td><td class="num"><input type="number" value="70" style="width:70px"> °C</td><td><input type="checkbox" checked></td></tr>
+    <tr><td data-t="Obciążenie CPU|CPU load"></td><td class="num"><input type="number" value="70" style="width:70px"> %</td><td class="num"><input type="number" value="90" style="width:70px"> %</td><td><input type="checkbox"></td></tr>
+    <tr><td>RAM</td><td class="num"><input type="number" value="80" style="width:70px"> %</td><td class="num"><input type="number" value="92" style="width:70px"> %</td><td><input type="checkbox" checked></td></tr>
+    <tr><td data-t="Zajętość array|Array usage"></td><td class="num"><input type="number" value="85" style="width:70px"> %</td><td class="num"><input type="number" value="95" style="width:70px"> %</td><td><input type="checkbox"></td></tr>
+    <tr><td data-t="Zatrzymany wybrany kontener|Selected container stopped"></td><td class="num" data-t="zawsze|always"></td><td class="num">—</td><td><input type="checkbox" checked></td></tr>
+    <tr><td data-t="Błąd SMART lub dysk wyłączony z array|SMART error or disk disabled"></td><td class="num">—</td><td class="num" data-t="zawsze|always"></td><td><input type="checkbox" checked></td></tr>
+  </table></div>
+</section>
+<!-- URZĄDZENIE -->
+<section id="urzadzenie">
+  <div class="pasek"><h2 data-t="Urządzenie USB|USB device"></h2><button class="btn" data-t="Testuj połączenie|Test connection"></button></div>
+  <div class="siatka" style="grid-template-columns:1fr 1fr">
+    <div class="karta"><h3 data-t="Wykryty ekran|Detected display"></h3>
+      <div class="wiersz"><span class="et" data-t="Model|Model"></span><span>Turing Smart Screen 3,5"</span></div>
+      <div class="wiersz"><span class="et" data-t="Protokół|Protocol"></span><span>rev A</span></div>
+      <div class="wiersz"><span class="et">VID:PID</span><span>1a86:5722</span></div>
+      <div class="wiersz"><span class="et" data-t="Numer seryjny|Serial number"></span><span>USB35INCHIPSV2</span></div>
+      <div class="wiersz"><span class="et" data-t="Port|Port"></span><span>/dev/ttyACM0</span></div>
+      <div class="wiersz"><span class="et" data-t="Ostatni test|Last test"></span><span class="znacznik" data-t="OK · 17:41 · klatka 0,62 s|OK · 17:41 · frame 0.62 s"></span></div>
+    </div>
+    <div class="karta"><h3 data-t="Tryb pracy|Mode"></h3>
+      <div class="karty-wyboru">
+        <div class="kw on"><span class="odz" data-t="domyślny|default"></span><div style="font-size:22px">⇄</div><span data-t="Ekran USB|USB display"></span></div>
+        <div class="kw"><div style="font-size:22px">◫</div><span data-t="Symulacja (bez ekranu)|Simulation (no display)"></span></div>
+      </div>
+      <div class="wiersz" style="margin-top:10px"><span class="et"><span data-t="Ponowne łączenie po odłączeniu|Reconnect after unplug"></span><span class="pomoc" title="Co 5 s szuka ekranu po identyfikatorze USB / Looks for the display by USB id every 5 s">?</span></span><span class="znacznik" data-t="włączone|on"></span></div>
+    </div></div>
+</section>
+<!-- MOTYWY -->
+<section id="motywy">
+  <div class="pasek"><h2 data-t="Motywy|Themes"></h2><button class="btn" data-t="Importuj|Import"></button><button class="btn" data-t="Eksportuj|Export"></button></div>
+  <div class="karty-wyboru" style="max-width:760px">
+    <div class="kw on"><span class="odz" data-t="domyślny|default"></span><div style="height:60px;border-radius:6px;background:linear-gradient(90deg,#0b0f19 50%,#161c2a 50%);margin-bottom:8px"></div><span data-t="Ciemny|Dark"></span></div>
+    <div class="kw"><div style="height:60px;border-radius:6px;background:linear-gradient(90deg,#000 50%,#111 50%);margin-bottom:8px"></div><span data-t="Czarny (OLED)|Black"></span></div>
+    <div class="kw"><div style="height:60px;border-radius:6px;background:linear-gradient(90deg,#f2f4f8 50%,#fff 50%);margin-bottom:8px"></div><span data-t="Jasny|Light"></span></div>
+  </div>
+</section>
+<!-- LOGI -->
+<section id="logi">
+  <div class="pasek"><h2 data-t="Logi|Logs"></h2><select><option data-t="Wszystkie poziomy|All levels"></option></select><button class="btn ikona" title="Pobierz / Download">⤓</button></div>
+  <div class="karta log">
+    17:41:02 INFO  usb: test OK, klatka 320×480 w 0,62 s<br>
+    17:40:55 INFO  usb: ekran podłączony /dev/ttyACM0 (1a86:5722)<br>
+    17:40:41 WARN  usb: ekran odłączony, ponawiam co 5 s<br>
+    17:32:10 WARN  docker: kontener paperless zatrzymany<br>
+    17:05:00 INFO  unraid: parity check w toku, 63,4%<br>
+    16:58:12 INFO  start: panel na porcie 8765, tryb USB
+  </div>
+</section>
+</main>
+<script>
+const p=new URLSearchParams(location.search),j=p.get('j')||'pl',s=p.get('s')||'podglad';
+document.documentElement.lang=j;
+document.querySelectorAll('[data-t]').forEach(e=>{const [pl,en]=e.dataset.t.split('|');e.textContent=j==='en'?en:pl});
+document.querySelectorAll('[data-src]').forEach(e=>e.src=e.dataset.src.replace('{j}',j));
+document.querySelectorAll('section').forEach(e=>e.style.display=e.id===s?'':'none');
+document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.s===s));
+</script>
+</body></html>

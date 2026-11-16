@@ -1,0 +1,29 @@
+name: testy
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  testy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-inter
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -q tests
+  obraz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t unraid-lcd:test .
+      - name: Kontener startuje w trybie symulacji
+        run: |
+          mkdir -p cfg && echo '{"tryb":"symulacja"}' > cfg/ustawienia.json
+          docker run -d --name lcd -p 8765:8765 -v "$PWD/cfg:/config" -v /proc:/host/proc:ro \
+            --cap-drop ALL --read-only --tmpfs /tmp unraid-lcd:test
+          for i in $(seq 1 20); do curl -fs localhost:8765/api/stan && break; sleep 1; done
+          curl -fs -o podglad.png localhost:8765/api/podglad.png
+          docker logs lcd
