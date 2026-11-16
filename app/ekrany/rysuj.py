@@ -119,14 +119,19 @@ def naglowek(d, tytul, indeks, dane):
     d.text((M, 20), tytul, font=f, fill=KOLORY["tekst"], anchor="lm")
     d.text((W - M, 20), dane["godzina"], font=font(16, "SemiBold"),
            fill=KOLORY["tekst"] if krytyczne else KOLORY["szary"], anchor="rm")
-    # kropki widoków (który ekran z pięciu)
-    for i in range(5):
-        x = W // 2 + 18 + i * 12
-        if krytyczne:
-            kolor = KOLORY["tekst"] if i == indeks else (200, 90, 90)
-        else:
-            kolor = KOLORY["akcent"] if i == indeks else KOLORY["linia"]
-        d.ellipse((x - 3, 17, x + 3, 23), fill=kolor)
+    # Który to ekran: kropki przy maks. 6 ekranach, przy większej liczbie tekst „7/11”.
+    razem = dane.get("ekrany_razem", 5)
+    if razem <= 6:
+        for i in range(razem):
+            x = W // 2 + 18 + i * 12
+            if krytyczne:
+                kolor = KOLORY["tekst"] if i == indeks else (200, 90, 90)
+            else:
+                kolor = KOLORY["akcent"] if i == indeks else KOLORY["linia"]
+            d.ellipse((x - 3, 17, x + 3, 23), fill=kolor)
+    else:
+        d.text((W - M - 62, 20), f"{indeks + 1}/{razem}", font=font(13, "SemiBold"),
+               fill=KOLORY["tekst"] if krytyczne else KOLORY["szary"], anchor="rm")
     # Licznik: biały z liczbą krytycznych albo żółty z liczbą ostrzeżeń.
     if krytyczne or ostrzezenia:
         x0 = M + d.textlength(tytul, font=f) + 10
