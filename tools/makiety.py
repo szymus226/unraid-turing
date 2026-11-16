@@ -41,3 +41,14 @@ if __name__ == "__main__":
             arkusz.paste(ikona(rodzaj, False, 64, KOLORY["tlo"]), (x + 38, 110))
             d.text((x + 70, 210), OPISY[jezyk][rodzaj], font=font(13), fill=KOLORY["szary"], anchor="ma")
         arkusz.save(WYJSCIE / f"lcd-{jezyk}-pogoda-ikony.png")
+        # Układ poziomy 480×320 (ekran położony bokiem).
+        from app.ekrany import poziome
+        pozi = poziome.wszystkie(jezyk)
+        for nazwa, obraz in pozi.items():
+            obraz.save(WYJSCIE / f"lcd-{jezyk}-poziomo-{nazwa}.png")
+        kolumny = 4
+        wiersze = -(-len(pozi) // kolumny)
+        zestawienie = Image.new("RGB", (kolumny * (poziome.PW + 20) + 20, wiersze * (poziome.PH + 20) + 20), (60, 64, 72))
+        for i, obraz in enumerate(pozi.values()):
+            zestawienie.paste(obraz, (20 + (i % kolumny) * (poziome.PW + 20), 20 + (i // kolumny) * (poziome.PH + 20)))
+        zestawienie.save(WYJSCIE / f"lcd-{jezyk}-zestawienie-poziome.png")

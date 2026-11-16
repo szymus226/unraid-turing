@@ -106,31 +106,32 @@ def licznik_alertow(dane):
 def obramowanie(img, dane):
     """Przy alercie krytycznym czerwona ramka dookoła całego ekranu (6 px, mieści się w marginesie)."""
     if licznik_alertow(dane)[0]:
-        ImageDraw.Draw(img).rectangle((0, 0, W - 1, H - 1), outline=KOLORY["alarm"], width=6)
+        ImageDraw.Draw(img).rectangle((0, 0, img.width - 1, img.height - 1), outline=KOLORY["alarm"], width=6)
     return img
 
 
-def naglowek(d, tytul, indeks, dane):
+def naglowek(d, tytul, indeks, dane, w=W):
+    """Pasek tytułu; w to szerokość ekranu (480 w układzie poziomym)."""
     krytyczne, ostrzezenia = licznik_alertow(dane)
     # Alert krytyczny barwi nagłówek każdego ekranu na czerwono.
     tlo = KOLORY["alarm"] if krytyczne else KOLORY["karta"]
-    d.rectangle((0, 0, W, 40), fill=tlo)
+    d.rectangle((0, 0, w, 40), fill=tlo)
     f = font(18, "Bold")
     d.text((M, 20), tytul, font=f, fill=KOLORY["tekst"], anchor="lm")
-    d.text((W - M, 20), dane["godzina"], font=font(16, "SemiBold"),
+    d.text((w - M, 20), dane["godzina"], font=font(16, "SemiBold"),
            fill=KOLORY["tekst"] if krytyczne else KOLORY["szary"], anchor="rm")
     # Który to ekran: kropki przy maks. 6 ekranach, przy większej liczbie tekst „7/11”.
     razem = dane.get("ekrany_razem", 5)
     if razem <= 6:
         for i in range(razem):
-            x = W // 2 + 18 + i * 12
+            x = w // 2 + 18 + i * 12
             if krytyczne:
                 kolor = KOLORY["tekst"] if i == indeks else (200, 90, 90)
             else:
                 kolor = KOLORY["akcent"] if i == indeks else KOLORY["linia"]
             d.ellipse((x - 3, 17, x + 3, 23), fill=kolor)
     else:
-        d.text((W - M - 62, 20), f"{indeks + 1}/{razem}", font=font(13, "SemiBold"),
+        d.text((w - M - 62, 20), f"{indeks + 1}/{razem}", font=font(13, "SemiBold"),
                fill=KOLORY["tekst"] if krytyczne else KOLORY["szary"], anchor="rm")
     # Licznik: biały z liczbą krytycznych albo żółty z liczbą ostrzeżeń.
     if krytyczne or ostrzezenia:
