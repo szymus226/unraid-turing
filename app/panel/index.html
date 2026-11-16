@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unraid LCD</title>
+<style>
+/* Układ: lewy panel nawigacji (ciemniejszy niż treść) + obszar roboczy z kartami; na telefonie nawigacja jako pasek u góry. */
+:root{
+  --bg:#0b0f19;--nav-bg:#060a14;--karta:#161c2a;--linia:#283042;--tekst:#e8ecf4;--szary:#8c96aa;
+  --ok:#34c778;--uwaga:#f5b428;--alarm:#f04646;--akcent:#4696ff;--akcent-tlo:#16284a;--ok-tlo:#16341f;--uwaga-tlo:#3a2f10;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,"JetBrains Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;font:14px/1.45 var(--font);background:var(--bg);color:var(--tekst);display:flex;min-height:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--akcent);outline-offset:2px}
+nav{width:224px;flex:none;background:var(--nav-bg);padding:14px 10px;border-right:1px solid var(--linia);display:flex;flex-direction:column;gap:2px;padding-left:max(10px,env(safe-area-inset-left,0px))}
+nav h1{font-size:16px;margin:4px 8px 14px;display:flex;gap:8px;align-items:center}
+nav button.poz{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:6px;color:var(--szary);background:none;border:0;text-align:left;cursor:pointer;width:100%}
+nav button.poz:hover{background:var(--karta);color:var(--tekst)}
+nav button.poz.on{background:var(--karta);color:var(--tekst)}
+nav .ik{width:18px;text-align:center}
+nav .stan{margin-top:18px;padding:10px;border-radius:8px;background:var(--karta);font-size:12px;color:var(--szary);display:grid;gap:4px}
+nav .jezyk{margin-top:auto;display:flex;gap:4px;padding:8px}
+.przel{background:var(--karta);border:1px solid var(--linia);border-radius:6px;padding:3px 10px;cursor:pointer;color:var(--szary)}
+.przel.on{background:var(--akcent-tlo);border-color:var(--akcent);color:var(--tekst)}
+main{flex:1;min-width:0;padding-block:18px 40px;padding-left:22px;padding-right:max(22px,env(safe-area-inset-right,0px))}
+.pasek{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.pasek h2{font-size:18px;margin:0;flex:1;min-width:160px}
+.btn{background:var(--karta);border:1px solid var(--linia);border-radius:6px;padding:6px 12px;display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.btn:hover{border-color:var(--szary)}
+.btn.ikona{padding:6px 9px}
+.btn.glowny{background:var(--akcent);border-color:var(--akcent);color:#fff}
+.btn.glowny:disabled{opacity:.45;cursor:default}
+.btn.usun{color:var(--alarm)}
+.siatka{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:start}
+.dwie{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.karta{background:var(--karta);border:1px solid var(--linia);border-radius:10px;padding:14px;min-width:0}
+.karta h3{margin:0 0 10px;font-size:12px;color:var(--szary);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.lcd-ramka{background:#000;border-radius:10px;padding:6px;width:max-content;max-width:100%}
+.lcd{width:320px;max-width:100%;aspect-ratio:2/3;display:block;border-radius:4px;transition:filter .2s,transform .3s}
+.lcd-podpis{font-size:12px;color:var(--szary);margin-top:6px;display:flex;justify-content:space-between;gap:8px}
+.wiersz{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--linia);flex-wrap:wrap}
+.wiersz:last-child{border:0}
+.wiersz .et{flex:1;color:var(--szary);min-width:140px}
+.pomoc{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--szary);font-size:10px;color:var(--szary);margin-left:5px;cursor:help;vertical-align:1px}
+.kropka{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+input[type=range]{width:170px;accent-color:var(--akcent)}
+select,input[type=number],input[type=text],input[type=time]{background:var(--bg);border:1px solid var(--linia);border-radius:6px;padding:5px 8px}
+select{max-width:100%}
+input[type=checkbox]{accent-color:var(--akcent);width:16px;height:16px}
+.karty-wyboru{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.kw{position:relative;border:2px solid var(--linia);border-radius:10px;padding:14px 12px 12px;text-align:center;font-weight:600;cursor:pointer;background:var(--bg)}
+.kw:hover{border-color:var(--szary)}
+.kw.on{border-color:var(--akcent);background:var(--akcent-tlo)}
+.kw .odz{position:absolute;top:6px;right:8px;font-size:10px;color:var(--akcent);font-weight:600}
+.kw .opis{display:block;font-weight:400;font-size:12px;color:var(--szary);margin-top:4px}
+.mini{width:28px;height:42px;border:2px solid var(--szary);border-radius:3px;margin:0 auto 8px;position:relative}
+.mini::after{content:"";position:absolute;left:50%;bottom:-8px;width:6px;height:6px;margin-left:-3px;background:var(--szary);border-radius:1px}
+.mini.odw{transform:rotate(180deg)}
+.mini.poz-p{transform:rotate(-90deg);margin:7px auto 15px}
+.mini.poz-l{transform:rotate(90deg);margin:7px auto 15px}
+.lcd.poziomo{width:480px;aspect-ratio:3/2}
+#obrot{grid-template-columns:repeat(2,minmax(0,1fr))}
+.el.wyl{opacity:.55;border-style:dashed}
+.el.wyl:hover{background:var(--bg)}
+.el.wyl .el-nazwa{text-decoration:line-through}
+.el-oko{padding:4px 6px;flex:none}
+.el-styl{margin-left:auto}
+.el-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:6px}
+.el{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 12px;align-items:center;background:var(--bg);border:1px solid var(--linia);border-radius:10px;padding:12px;transition:border-color .15s,background .15s}
+.el:hover{border-color:var(--akcent);background:var(--akcent-tlo)}
+.el-ik{grid-row:span 2;width:44px;height:44px;border-radius:10px;display:grid;place-items:center;background:var(--akcent-tlo);color:var(--akcent)}
+.el-ik svg{width:24px;height:24px}
+.el-gora{display:flex;align-items:center;gap:8px;min-width:0}
+.el-nazwa{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.el-styl{flex:none;font-size:11px;color:var(--szary);border:1px solid var(--linia);border-radius:9px;padding:1px 8px}
+.el select{width:100%;font-size:13px;padding:6px 8px}
+.ustawienia-ekranu{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
+.ustawienia-ekranu .pole{background:var(--bg);border:1px solid var(--linia);border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ustawienia-ekranu .pole label,.ustawienia-ekranu .pole>span:first-child{color:var(--szary);font-size:13px}
+.pasek-stanu{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.ps{display:inline-flex;align-items:center;gap:6px;background:var(--karta);border:1px solid var(--linia);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--szary)}
+.ps b{color:var(--tekst);font-weight:600}
+.miniatury{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.min{width:112px;flex:none;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.min img{width:112px;border-radius:4px;border:2px solid var(--linia);display:block}
+.min.on img{border-color:var(--akcent)}
+.min.wyl img{opacity:.35}
+.min .opis{display:flex;justify-content:space-between;font-size:12px;color:var(--szary);margin-top:4px;gap:4px}
+.min .opis span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.min .opis span:last-child{flex:none}
+.tabela{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+td,th{padding:7px 6px;border-bottom:1px solid var(--linia);text-align:left;vertical-align:middle}
+th{color:var(--szary);font-weight:600;font-size:12px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.wart{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;width:118px}
+.wart input{width:72px;text-align:right;font-variant-numeric:tabular-nums}
+.wart .jedn{width:22px;text-align:left;color:var(--szary)}
+.wart .tekst-wart{width:72px;text-align:right;padding-right:9px}
+th.num .kropka{vertical-align:1px}
+td.srodek,th.srodek{text-align:center}
+#alarmy th.num,#alarmy td.num{text-align:center}
+#alarmy .wart{width:100px;justify-content:flex-start}
+#alarmy .wart .tekst-wart{text-align:center;padding-right:0}
+.znacznik{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--ok-tlo);color:var(--ok);white-space:nowrap;display:inline-block}
+.znacznik.u{background:var(--uwaga-tlo);color:var(--uwaga)}
+.znacznik.a{background:#3a1414;color:var(--alarm)}
+.znacznik.s{background:var(--linia);color:var(--szary)}
+.log{font:12px/1.7 var(--mono);color:var(--szary)}
+.log .WARNING{color:var(--uwaga)}
+.log .ERROR{color:var(--alarm)}
+.licznik{font-size:12px;color:var(--szary)}
+.licznik.pelny{color:var(--uwaga)}
+.toast{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--karta);border:1px solid var(--ok);color:var(--tekst);padding:10px 14px;border-radius:8px;box-shadow:0 6px 24px #0008;display:flex;gap:8px;align-items:center}
+.niezapisane{font-size:12px;color:var(--uwaga);display:flex;align-items:center;gap:6px}
+.dialog-tlo{position:fixed;inset:0;background:#000a;display:grid;place-items:center;padding:16px;z-index:20}
+.dialog{background:var(--karta);border:1px solid var(--linia);border-radius:12px;padding:18px;max-width:420px;width:100%}
+.dialog h3{margin:0 0 8px;font-size:16px}
+.dialog p{margin:0 0 14px;color:var(--szary)}
+.dialog .przyciski{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.motyw-probka{height:64px;border-radius:6px;margin-bottom:8px;border:1px solid var(--linia)}
+.baner-krytyczny{background:#3a1416;border:1px solid var(--alarm);color:var(--tekst);border-radius:8px;padding:10px 12px;margin:-4px 0 14px}
+.baner-krytyczny strong{color:var(--alarm);margin-right:6px}
+.btn:disabled{opacity:.4;cursor:default}
+@media (max-width:760px){
+  body{flex-direction:column}
+  nav{width:auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--linia);padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));gap:4px;align-items:center}
+  nav h1,nav .stan{display:none}
+  nav button.poz{width:auto;white-space:nowrap}
+  nav .jezyk{margin:0 0 0 auto;padding:0}
+  main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .siatka,.dwie{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){.lcd{transition:none}}
+</style>
+</head>
+<body>
+<nav aria-label="Panel">
+  <h1><span class="kropka" id="kropka-stanu" style="background:var(--ok)"></span>Unraid LCD</h1>
+  <button class="poz" data-s="podglad"><span class="ik">▣</span><span data-t="Podgląd|Preview"></span></button>
+  <button class="poz" data-s="ekrany"><span class="ik">▦</span><span data-t="Ekrany i układy|Screens & layouts"></span></button>
+  <button class="poz" data-s="dane"><span class="ik">☷</span><span data-t="Dyski i kontenery|Disks & containers"></span></button>
+  <button class="poz" data-s="alarmy"><span class="ik">⚠</span><span data-t="Progi alarmowe|Alert thresholds"></span></button>
+  <button class="poz" data-s="urzadzenie"><span class="ik">⇄</span><span data-t="Urządzenie USB|USB device"></span></button>
+  <button class="poz" data-s="motywy"><span class="ik">◐</span><span data-t="Motywy|Themes"></span></button>
+  <button class="poz" data-s="logi"><span class="ik">≡</span><span data-t="Logi|Logs"></span></button>
+  <div class="stan">
+    <div><span class="kropka" id="kropka-boczna" style="background:var(--ok)"></span> <span id="stan-boczny"></span></div>
+    <div>Turing 3,5" · rev A</div>
+    <div data-t="Tylko sieć domowa|Home network only"></div>
+  </div>
+  <div class="jezyk" role="group" aria-label="Język / Language">
+    <button class="przel" data-j="pl">PL</button><button class="przel" data-j="en">EN</button>
+  </div>
+</nav>
+
+<main>
+<div class="pasek-stanu" role="status" id="pasek-stanu"></div>
+<div class="baner-krytyczny" id="blad-polaczenia" hidden><strong data-t="Brak połączenia z aplikacją|No connection to the app"></strong> <span data-t="Panel ponawia co 2 s.|The panel retries every 2 s."></span></div>
+
+<!-- PODGLĄD -->
+<section id="podglad">
+  <div class="pasek"><h2 data-t="Podgląd|Preview"></h2>
+    <button class="btn ikona" id="poprz" data-tip="Poprzedni ekran|Previous screen">◀</button>
+    <button class="btn ikona" id="pauza" data-tip="Wstrzymaj przełączanie|Pause rotation">⏸</button>
+    <button class="btn ikona" id="nast" data-tip="Następny ekran|Next screen">▶</button>
+    <button class="btn" id="alert-testowy" data-t="Test alertu krytycznego (60 s)|Critical alert test (60 s)"></button>
+  </div>
+  <div class="baner-krytyczny" id="baner-krytyczny" hidden><strong data-t="Alert krytyczny|Critical alert"></strong> <span id="baner-tekst"></span></div>
+  <div class="siatka">
+    <div>
+      <div class="lcd-ramka"><img class="lcd" id="lcd-glowny" alt=""></div>
+      <div class="lcd-podpis"><span id="podpis-ekranu"></span><span id="podpis-czasu"></span></div>
+    </div>
+    <div style="display:grid;gap:14px;min-width:0">
+      <div class="karta"><h3 data-t="Wyświetlanie|Display"></h3>
+        <div class="wiersz"><label class="et" for="jasnosc" data-t="Jasność|Brightness"></label><input type="range" id="jasnosc" min="5" max="100" value="60"><span id="jasnosc-wart" style="width:42px;text-align:right"></span></div>
+        <div class="wiersz"><label class="et" for="odswiezanie"><span data-t="Odświeżanie danych|Data refresh"></span><span class="pomoc" data-tip="Częściej oznacza większe obciążenie CPU i USB. Pełny obraz na tym ekranie trwa około 1,8 s.|More often means more CPU and USB load. A full frame takes about 1.8 s on this display.">?</span></label>
+          <select id="odswiezanie"><option value="1">1 s</option><option value="2">2 s</option><option value="5">5 s</option><option value="10">10 s</option></select></div>
+        <div class="wiersz"><label class="et" for="przelaczanie" data-t="Przełączanie ekranów|Screen rotation"></label>
+          <select id="przelaczanie"><option value="0" data-t="wyłączone|off"></option><option value="10" data-t="według czasu ekranów|by each screen's time"></option></select></div>
+        <div class="wiersz"><label class="et" for="jezyk-ekranu" data-t="Język ekranu LCD|LCD language"></label>
+          <select id="jezyk-ekranu"><option value="pl">Polski</option><option value="en">English</option></select></div>
+        <div class="wiersz"><label class="et" for="noc"><span data-t="Wyłącz ekran nocą|Turn off at night"></span><span class="pomoc" data-tip="Alert krytyczny włącza ekran także w tych godzinach.|A critical alert turns the display on during these hours too.">?</span></label>
+          <input type="checkbox" id="noc"><input type="time" id="noc-od" value="23:00" data-tip="od|from"><span>–</span><input type="time" id="noc-do" value="07:00" data-tip="do|to"></div>
+      </div>
+      <div class="karta"><h3 data-t="Obrót ekranu|Rotation"></h3>
+        <div class="karty-wyboru" role="radiogroup" id="obrot">
+          <div class="kw" role="radio" tabindex="0" data-v="pionowo"><span class="odz" data-t="domyślny|default"></span><div class="mini"></div><span data-t="Pionowo|Portrait"></span><span class="opis" data-t="kabel na dole|cable at the bottom"></span></div>
+          <div class="kw" role="radio" tabindex="0" data-v="pionowo_odwrocony"><div class="mini odw"></div><span data-t="Pionowo, odwrócony|Portrait, flipped"></span><span class="opis" data-t="kabel na górze|cable at the top"></span></div>
+          <div class="kw" role="radio" tabindex="0" data-v="poziomo"><div class="mini poz-p"></div><span data-t="Poziomo|Landscape"></span><span class="opis" data-t="kabel z prawej|cable on the right"></span></div>
+          <div class="kw" role="radio" tabindex="0" data-v="poziomo_odwrocony"><div class="mini poz-l"></div><span data-t="Poziomo, odwrócony|Landscape, flipped"></span><span class="opis" data-t="kabel z lewej|cable on the left"></span></div>
+        </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- EKRANY -->
+<section id="ekrany" hidden>
+  <div class="pasek"><h2 data-t="Ekrany i układy|Screens & layouts"></h2>
+    <span class="niezapisane" id="niezap-ekrany" hidden>● <span data-t="Niezapisane zmiany|Unsaved changes"></span></span>
+    <button class="btn glowny zapisz" data-grupa="ekrany" disabled data-t="Zapisz|Save"></button></div>
+  <div class="karta" style="margin-bottom:14px"><h3 data-t="Kolejność, czas i widoczność|Order, time and visibility"></h3>
+    <div class="miniatury" id="miniatury"></div></div>
+  <div class="siatka">
+    <div class="lcd-ramka"><img class="lcd" id="lcd-edytor" alt=""></div>
+    <div class="karta" style="min-width:0"><h3 id="tytul-elementow"></h3>
+      <div class="ustawienia-ekranu">
+        <div class="pole"><label for="czas-ekranu" data-t="Czas wyświetlania|Display time"></label><select id="czas-ekranu"><option value="5">5 s</option><option value="10">10 s</option><option value="15">15 s</option><option value="30">30 s</option><option value="60">60 s</option></select></div>
+        <div class="pole"><label for="widoczny" data-t="Pokazuj ten ekran|Show this screen"></label><input type="checkbox" id="widoczny"></div>
+        <div class="pole" id="wiersz-warunek" hidden><span data-t="Kiedy|When"></span><span class="znacznik s" id="warunek-tekst"></span></div>
+      </div>
+      <h3 data-t="Elementy na ekranie|Elements on screen"></h3>
+      <div class="el-lista" id="elementy"></div>
+    </div>
+  </div>
+</section>
+
+<!-- DYSKI I KONTENERY -->
+<section id="dane" hidden>
+  <div class="pasek"><h2 data-t="Dyski i kontenery|Disks & containers"></h2>
+    <span class="niezapisane" id="niezap-dane" hidden>● <span data-t="Niezapisane zmiany|Unsaved changes"></span></span>
+    <button class="btn glowny zapisz" data-grupa="dane" disabled data-t="Zapisz|Save"></button></div>
+  <div class="karta" style="margin-bottom:14px;max-width:820px"><h3 data-t="Kolejność dysków, kontenerów i VM na ekranie|Order of disks, containers and VMs on screen"></h3>
+    <div class="karty-wyboru" role="radiogroup" id="kolejnosc">
+      <div class="kw" role="radio" tabindex="0" data-v="awarie"><span class="odz" data-t="domyślny|default"></span><span data-t="Awarie na górze|Failures on top"></span><span class="opis" data-t="najpierw alarm, potem ostrzeżenie, reszta jak na liście|alarm first, then warning, the rest as listed"></span></div>
+      <div class="kw" role="radio" tabindex="0" data-v="lista"><span data-t="Jak na liście|As listed"></span><span class="opis" data-t="stała kolejność z tabel poniżej|fixed order from the tables below"></span></div>
+    </div></div>
+  <div class="dwie">
+    <div class="karta"><h3 data-t="Dyski na ekranie|Disks on screen"></h3><div class="tabela"><table><thead><tr><th></th><th data-t="Dysk|Disk"></th><th data-t="Rola|Role"></th><th class="num">Temp.</th><th>SMART</th></tr></thead><tbody id="dyski"></tbody></table></div></div>
+    <div class="karta"><h3><span data-t="Kontenery na ekranie|Containers on screen"></span> <span class="licznik" id="licznik-kont"></span></h3><div class="tabela"><table><thead><tr><th></th><th data-t="Kontener|Container"></th><th data-t="Stan|State"></th><th class="num">CPU</th><th class="num">RAM</th></tr></thead><tbody id="kontenery"></tbody></table></div></div>
+  </div>
+  <div class="karta" style="margin-top:14px;max-width:820px"><h3><span data-t="Pomiary przez internet|Measurements over the internet"></span> <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:9px;background:#f5b42833;color:#f5b428" data-t="łączy się z internetem|connects to the internet"></span></h3>
+    <div class="wiersz"><label class="et" style="flex:0 0 170px" for="speedtest" data-t="Speedtest|Speed test"></label><input type="checkbox" id="speedtest" aria-label="Speedtest">
+      <label for="speedtest-co" style="color:var(--szary,#8c96aa);font-size:13px" data-t="Pomiar co|Test every"></label><select id="speedtest-co" disabled><option value="0.5" data-t="30 min|30 min"></option><option value="1" data-t="1 h|1 h"></option><option value="2" data-t="2 h|2 h"></option><option value="3" data-t="3 h|3 h"></option><option value="6" data-t="6 h|6 h"></option><option value="12" data-t="12 h|12 h"></option><option value="24" data-t="24 h|24 h"></option></select>
+      <span class="opis" style="color:var(--szary,#8c96aa);font-size:12px" data-t="Historia z 72 h zostaje na serwerze. Jeden pomiar pobiera ok. 100–300 MB.|72 h history stays on the server. One test downloads about 100–300 MB."></span></div>
+    <div class="wiersz"><label class="et" style="flex:0 0 170px" for="pogoda" data-t="Pogoda na zegarze|Weather on clock"></label><select id="pogoda"><option value="0" data-t="Wyłączona|Off"></option><option value="1" data-t="Włączona (Open-Meteo)|On (Open-Meteo)"></option></select>
+      <input type="text" id="pogoda-miejsce" style="width:170px" data-ph="Miejscowość|Town" disabled><span class="licznik" id="pogoda-stan"></span></div>
+  </div>
+</section>
+
+<!-- ALARMY -->
+<section id="alarmy" hidden>
+  <div class="pasek"><h2 data-t="Progi alarmowe|Alert thresholds"></h2>
+    <span class="niezapisane" id="niezap-alarmy" hidden>● <span data-t="Niezapisane zmiany|Unsaved changes"></span></span>
+    <button class="btn glowny zapisz" data-grupa="alarmy" disabled data-t="Zapisz|Save"></button></div>
+  <div class="karta" style="max-width:820px"><div class="tabela"><table>
+    <thead><tr><th data-t="Parametr|Metric"></th><th class="num"><span class="kropka" style="background:var(--uwaga)"></span> <span data-t="Ostrzeżenie|Warning"></span></th><th class="num"><span class="kropka" style="background:var(--alarm)"></span> <span data-t="Alarm|Alarm"></span></th><th class="srodek"><span data-t="Przełącz na Alerty|Jump to Alerts"></span><span class="pomoc" data-tip="Gdy próg zostanie przekroczony, ekran od razu pokaże widok Alerty.|When a threshold is crossed, the display jumps straight to the Alerts screen.">?</span></th></tr></thead>
+    <tbody id="progi"></tbody></table></div></div>
+  <div class="karta" style="max-width:820px;margin-top:14px"><h3 data-t="Alerty krytyczne mają pierwszeństwo|Critical alerts take priority"></h3>
+    <div class="wiersz"><label class="et" for="kr-przypnij" data-t="Przypnij ekran Alerty, dopóki problem nie zniknie|Pin the Alerts screen until the problem is gone"></label><input type="checkbox" id="kr-przypnij" checked></div>
+    <div class="wiersz"><label class="et" for="kr-jasnosc" data-t="Włącz ekran z jasnością 100%, także gdy jest wyłączony na noc|Turn the display on at 100% brightness, even when it is off for the night"></label><input type="checkbox" id="kr-jasnosc" checked></div>
+    <div class="wiersz"><label class="et" for="kr-naglowek" data-t="Czerwony nagłówek i ramka na każdym ekranie|Red header and frame on every screen"></label><input type="checkbox" id="kr-naglowek" checked></div>
+    <div class="wiersz" style="align-items:flex-start"><span class="et" data-t="Krytyczne z serwera|Critical from the server"></span>
+      <span style="flex:2;min-width:220px" data-t="dysk wyłączony lub brakujący w array, błąd SMART, zatrzymany array, błędy parity, próg alarmowy temperatury, powiadomienie Unraida o poziomie „alert”|disk disabled or missing in the array, SMART failure, array stopped, parity errors, temperature alarm threshold, Unraid notification with level “alert”"></span></div>
+    <div class="wiersz" style="align-items:flex-start"><span class="et" data-t="Krytyczne z pulpitu homelabbera|Critical from the homelabber desktop"></span>
+      <span style="flex:2;min-width:220px"><span class="znacznik s" data-t="później|later"></span> <span data-t="lista ustawiana w pulpicie, np. awaria tunelu, DNS, zasilania|list set in the desktop, e.g. tunnel, DNS or power failure"></span></span></div>
+  </div>
+</section>
+
+<!-- URZĄDZENIE -->
+<section id="urzadzenie" hidden>
+  <div class="pasek"><h2 data-t="Urządzenie USB|USB device"></h2><button class="btn" id="test" data-t="Testuj połączenie|Test connection"></button></div>
+  <div class="dwie">
+    <div class="karta"><h3 data-t="Wykryty ekran|Detected display"></h3>
+      <div class="wiersz"><span class="et" data-t="Model|Model"></span><span>Turing Smart Screen 3,5"</span></div>
+      <div class="wiersz"><span class="et" data-t="Protokół|Protocol"></span><span>rev A</span></div>
+      <div class="wiersz"><span class="et">VID:PID</span><span>1a86:5722</span></div>
+      <div class="wiersz"><span class="et" data-t="Port|Port"></span><span id="port-wart">—</span></div>
+      <div class="wiersz"><label class="et" for="port-wybor"><span data-t="Wybór portu|Port selection"></span><span class="pomoc" data-tip="Automatycznie: aplikacja co 5 s szuka ekranu po identyfikatorze USB, także po odłączeniu.|Automatic: the app looks for the display by USB id every 5 s, also after unplugging.">?</span></label>
+        <select id="port-wybor"><option value="auto" data-t="automatycznie|automatic"></option></select></div>
+      <div class="wiersz"><span class="et" data-t="Ostatni test|Last test"></span><span id="wynik-testu" class="znacznik s">—</span></div>
+    </div>
+    <div class="karta"><h3 data-t="Tryb pracy|Mode"></h3>
+      <div class="karty-wyboru" role="radiogroup" id="tryb">
+        <div class="kw" role="radio" tabindex="0" data-v="usb"><span class="odz" data-t="domyślny|default"></span><div style="font-size:22px">⇄</div><span data-t="Ekran USB|USB display"></span><span class="opis" data-t="obraz trafia na ekran|image goes to the display"></span></div>
+        <div class="kw" role="radio" tabindex="0" data-v="symulacja"><div style="font-size:22px">◫</div><span data-t="Symulacja|Simulation"></span><span class="opis" data-t="tylko podgląd w panelu|preview in the panel only"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MOTYWY -->
+<section id="motywy" hidden>
+  <div class="pasek"><h2 data-t="Motywy|Themes"></h2><button class="btn" id="import" data-t="Importuj|Import"></button><button class="btn" id="eksport" data-t="Eksportuj|Export"></button><input type="file" id="plik-motywu" accept=".json,application/json" hidden></div>
+  <div class="karty-wyboru" role="radiogroup" id="motyw" style="max-width:820px">
+    <div class="kw" role="radio" tabindex="0" data-v="granatowy"><span class="odz" data-t="domyślny|default"></span><div class="motyw-probka" style="background:linear-gradient(90deg,#0b0f19 50%,#161c2a 50%)"></div><span data-t="Granatowy|Navy"></span></div>
+    <div class="kw" role="radio" tabindex="0" data-v="czarny"><div class="motyw-probka" style="background:linear-gradient(90deg,#000 50%,#111 50%)"></div><span data-t="Czarny|Black"></span></div>
+    <div class="kw" role="radio" tabindex="0" data-v="jasny"><div class="motyw-probka" style="background:linear-gradient(90deg,#eef1f6 50%,#fff 50%)"></div><span data-t="Jasny|Light"></span></div>
+  </div>
+</section>
+
+<!-- LOGI -->
+<section id="logi" hidden>
+  <div class="pasek"><h2 data-t="Logi|Logs"></h2>
+    <select id="poziom" aria-label="poziom"><option value="" data-t="Wszystkie poziomy|All levels"></option><option value="WARN" data-t="Tylko ostrzeżenia i błędy|Warnings and errors only"></option></select>
+    <button class="btn ikona" id="pobierz" data-tip="Pobierz logi|Download logs">⤓</button></div>
+  <div class="karta log" id="log"></div>
+</section>
+</main>
+
+<div class="toast" id="toast" hidden role="status"><span style="color:var(--ok)">✓</span><span id="toast-tekst"></span></div>
+<div class="dialog-tlo" id="dialog" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-tytul">
+    <h3 id="dialog-tytul" data-t="Niezapisane zmiany|Unsaved changes"></h3>
+    <p data-t="Na tej stronie są niezapisane zmiany. Co z nimi zrobić?|This page has unsaved changes. What should happen to them?"></p>
+    <div class="przyciski"><button class="btn" id="d-anuluj" data-t="Zostań|Stay"></button><button class="btn" id="d-odrzuc" data-t="Odrzuć|Discard"></button><button class="btn glowny" id="d-zapisz" data-t="Zapisz|Save"></button></div>
+  </div>
+</div>
+
+<script>
+// Panel Unraid LCD: ten sam układ co zatwierdzona makieta, dane i zapis przez API aplikacji.
+'use strict';
+const $ = id => document.getElementById(id);
+let J = 'pl';
+try { J = localStorage.getItem('lcd-jezyk-panelu') || ''; } catch (e) { J = ''; }
+const T = s => { const [pl, en] = s.split('|'); return J === 'en' ? (en ?? pl) : pl; };
+const liczba = (v, m = 1) => (+v).toLocaleString(J === 'en' ? 'en-US' : 'pl-PL', { maximumFractionDigits: m });
+const esc = s => String(s ?? '').replace(/[&<>"']/g, z => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[z]));
+
+// --- stan panelu ---
+let U = null;              // ustawienia z serwera
+let S = null;              // ostatni /api/stan
+let REJESTR = [];          // opis ekranów i ich elementów
+let ekranyRob = [];        // kopia robocza ekranów (do zapisu)
+let DYSKI = [], KONT = [], wybraneDyski = new Set(), wybraneKont = new Set();
+let wybranyEdytor = 0, sekcja = 'podglad', czekajacaSekcja = null, wersjaMiniatur = 0;
+const brudne = { ekrany: false, dane: false, alarmy: false };
+
+const PROGI = [
+  ['cpu_temp', 'Temperatura CPU|CPU temperature', '°C'], ['hdd_temp', 'Temperatura dysku HDD|HDD temperature', '°C'],
+  ['ssd_temp', 'Temperatura dysku SSD/NVMe|SSD/NVMe temperature', '°C'], ['cpu', 'Obciążenie CPU|CPU load', '%'],
+  ['ram', 'RAM|RAM', '%'], ['swap', 'SWAP|Swap', '%'], ['array', 'Zajętość array|Array usage', '%'],
+  ['kontener_stop', 'Zatrzymany wybrany kontener|Selected container stopped', '', 'always', null],
+  ['dysk_awaria', 'Błąd SMART lub dysk wyłączony z array|SMART error or disabled disk', '', null, 'always'],
+];
+const WARUNKI = {
+  parity: 'tylko gdy trwa kontrola parity|only while parity check runs',
+  speedtest: 'tylko gdy speedtest jest włączony w „Dyski i kontenery”|only when speed test is on in “Disks & containers”',
+};
+const ZRODLA = {
+  unraid: ['Unraid', '/var/local/emhttp → /host/emhttp'],
+  docker: ['Docker', '/var/lib/docker/containers → /host/docker/containers'],
+  czujniki: ['Czujniki temperatury|Temperature sensors', '/sys (hwmon)'],
+};
+
+async function api(sciezka, opcje = {}) {
+  const o = { ...opcje, headers: { ...(opcje.body ? { 'Content-Type': 'application/json' } : {}), ...(opcje.headers || {}) } };
+  const r = await fetch(sciezka, o);
+  if (!r.ok) {
+    let opis = r.status + ' ' + r.statusText;
+    try { const j = await r.json(); if (j.detail) opis = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail); } catch (e) { /* brak treści */ }
+    throw new Error(opis);
+  }
+  const typ = r.headers.get('content-type') || '';
+  return typ.includes('json') ? r.json() : r.text();
+}
+async function ustaw(zmiany, komunikat) {
+  try {
+    U = await api('/api/ustawienia', { method: 'PUT', body: JSON.stringify(zmiany) });
+    if (komunikat) toast(T(komunikat));
+    return true;
+  } catch (e) { toast(T('Nie udało się zapisać: |Could not save: ') + e.message, true); return false; }
+}
+
+// --- tłumaczenie ---
+function tlumacz() {
+  document.documentElement.lang = J;
+  document.querySelectorAll('[data-t]').forEach(e => e.textContent = T(e.dataset.t));
+  document.querySelectorAll('[data-ph]').forEach(e => e.placeholder = T(e.dataset.ph));
+  document.querySelectorAll('[data-tip]').forEach(e => { e.title = T(e.dataset.tip); e.setAttribute('aria-label', T(e.dataset.tip)); });
+  document.querySelectorAll('[data-j]').forEach(b => b.classList.toggle('on', b.dataset.j === J));
+  rysujWszystko();
+}
+
+// --- obrazy ekranów ---
+const poziomo = () => U && (U.orientacja === 'poziomo' || U.orientacja === 'poziomo_odwrocony');
+function adresEkranu(klucz, ukryte) {
+  const p = new URLSearchParams({ ukryte: (ukryte || []).join(','), v: wersjaMiniatur });
+  return `/api/ekran/${encodeURIComponent(klucz)}.png?${p}`;
+}
+function opisEkranu(klucz) { return REJESTR.find(e => e.klucz === klucz) || { klucz, nazwa: klucz + '|' + klucz, elementy: [], warunek: null }; }
+
+// --- podgląd ---
+function rysujPodglad() {
+  if (!U || !S) return;
+  document.querySelectorAll('.lcd').forEach(e => e.classList.toggle('poziomo', !!poziomo()));
+  const img = $('lcd-glowny');
+  const opis = opisEkranu(S.ekran);
+  img.alt = T(opis.nazwa);
+  img.style.filter = S.noc ? 'brightness(.12)' : `brightness(${0.35 + 0.65 * (S.jasnosc || 0) / 100})`;
+  img.style.transform = U.orientacja === 'pionowo_odwrocony' ? 'rotate(180deg)' : '';
+  const alarmy = S.alerty.filter(a => a.poziom === 'alarm');
+  $('baner-krytyczny').hidden = !alarmy.length;
+  if (alarmy.length) {
+    const a = alarmy[0];
+    const skutki = [S.przypiety ? T('Ekran Alerty jest przypięty, przełączanie wstrzymane|The Alerts screen is pinned, rotation paused') : '',
+      U.krytyczne_jasnosc ? T('jasność 100%|brightness 100%') : ''].filter(Boolean).join(', ');
+    $('baner-tekst').textContent = `${a.tytul}${a.opis ? ': ' + a.opis : ''}${alarmy.length > 1 ? ` (+${alarmy.length - 1})` : ''}.${skutki ? ' ' + skutki[0].toUpperCase() + skutki.slice(1) + '.' : ''}`;
+  }
+  ['poprz', 'pauza', 'nast'].forEach(id => $(id).disabled = S.przypiety);
+  const testowy = S.alerty.some(a => a.id === 'zew:test-panelu');
+  $('alert-testowy').textContent = testowy ? T('Usuń alert testowy|Clear test alert') : T('Test alertu krytycznego (60 s)|Critical alert test (60 s)');
+  if (S.przypiety) {
+    $('podpis-ekranu').textContent = T('Alerty · przypięte|Alerts · pinned');
+    $('podpis-czasu').textContent = U.krytyczne_jasnosc ? T('jasność 100%|brightness 100%') : '';
+  } else {
+    const n = S.kolejka.length;
+    $('podpis-ekranu').textContent = `${n ? S.indeks + 1 : 1} / ${n || 1} · ${T(opis.nazwa)}`;
+    $('podpis-czasu').textContent = S.noc ? T('ekran wyłączony na noc|display off for the night')
+      : S.pauza ? T('wstrzymane|paused')
+      : S.nastepny_za_s != null ? T('następny za|next in') + ' ' + Math.ceil(S.nastepny_za_s) + ' s' : '';
+  }
+  $('pauza').textContent = S.pauza ? '▶︎▶︎' : '⏸';
+  $('pauza').dataset.tip = S.pauza ? 'Wznów przełączanie|Resume rotation' : 'Wstrzymaj przełączanie|Pause rotation';
+  $('pauza').title = T($('pauza').dataset.tip);
+}
+function odswiezObraz() {
+  if (sekcja !== 'podglad' || document.hidden) return;
+  const img = $('lcd-glowny');
+  const nowy = new Image();
+  nowy.onload = () => { img.src = nowy.src; };
+  nowy.src = '/api/podglad.png?t=' + Date.now();
+}
+function rysujUstawieniaPodgladu() {
+  if (!U) return;
+  $('jasnosc').value = U.jasnosc; $('jasnosc-wart').textContent = U.jasnosc + '%';
+  $('odswiezanie').value = String(Math.round(U.odswiezanie_s));
+  $('przelaczanie').value = U.przelaczanie_s > 0 ? '10' : '0';
+  $('jezyk-ekranu').value = U.jezyk;
+  $('noc').checked = U.noc_wl; $('noc-od').value = U.noc_od; $('noc-do').value = U.noc_do;
+  $('noc-od').disabled = $('noc-do').disabled = !U.noc_wl;
+  zaznaczKarte('obrot', U.orientacja);
+  zaznaczKarte('tryb', U.tryb);
+  zaznaczKarte('motyw', U.motyw);
+}
+
+// --- edytor ekranów ---
+function rysujMiniatury() {
+  $('miniatury').innerHTML = '';
+  ekranyRob.forEach((e, i) => {
+    const opis = opisEkranu(e.klucz);
+    const b = document.createElement('button');
+    b.className = 'min' + (i === wybranyEdytor ? ' on' : '') + (e.wl ? '' : ' wyl');
+    b.innerHTML = '<img alt=""><div class="opis"><span></span><span></span></div>';
+    b.querySelector('img').src = adresEkranu(e.klucz, e.ukryte);
+    b.querySelectorAll('span')[0].textContent = `${i + 1} · ${T(opis.nazwa)}`; b.title = T(opis.nazwa);
+    b.querySelectorAll('span')[1].textContent = e.wl ? e.czas_s + ' s' : T('ukryty|hidden');
+    b.onclick = () => { wybranyEdytor = i; rysujEdytor(); };
+    $('miniatury').appendChild(b);
+  });
+}
+function rysujEdytor() {
+  const e = ekranyRob[wybranyEdytor];
+  if (!e) return;
+  const opis = opisEkranu(e.klucz);
+  rysujMiniatury();
+  $('lcd-edytor').src = adresEkranu(e.klucz, e.ukryte);
+  $('lcd-edytor').alt = T(opis.nazwa);
+  $('tytul-elementow').textContent = T('Ekran|Screen') + ' „' + T(opis.nazwa) + '”';
+  if (![...$('czas-ekranu').options].some(o => +o.value === e.czas_s)) {
+    const o = document.createElement('option'); o.value = e.czas_s; o.textContent = e.czas_s + ' s'; $('czas-ekranu').appendChild(o);
+  }
+  $('czas-ekranu').value = String(e.czas_s);
+  $('widoczny').checked = e.wl;
+  $('wiersz-warunek').hidden = !opis.warunek;
+  $('warunek-tekst').textContent = opis.warunek ? T(WARUNKI[opis.warunek] || opis.warunek) : '';
+  $('elementy').innerHTML = '';
+  opis.elementy.forEach(([a, b, c], i) => {
+    const ukryty = e.ukryte.includes(i);
+    const d = document.createElement('div');
+    d.className = 'el' + (ukryty ? ' wyl' : '');
+    d.innerHTML = `<div class="el-ik">${ikonaStylu(c)}</div><div class="el-gora"><span class="el-nazwa"></span><span class="el-styl"></span><button class="btn ikona el-oko" aria-pressed="${!ukryty}">${ukryty ? OKO_ZAMKNIETE : OKO}</button></div><select ${ukryty ? 'disabled' : ''}></select>`;
+    const oko = d.querySelector('.el-oko');
+    oko.title = T(ukryty ? 'Pokaż element|Show element' : 'Ukryj element|Hide element');
+    oko.setAttribute('aria-label', oko.title);
+    oko.onclick = () => {
+      e.ukryte = ukryty ? e.ukryte.filter(x => x !== i) : [...e.ukryte, i].sort((x, y) => x - y);
+      oznacz('ekrany'); rysujEdytor();
+    };
+    d.querySelector('.el-nazwa').textContent = T(a);
+    d.querySelector('.el-styl').textContent = T(c);
+    const o = document.createElement('option'); o.textContent = T(b); d.querySelector('select').appendChild(o);
+    d.querySelector('select').setAttribute('aria-label', T(a));
+    $('elementy').appendChild(d);
+  });
+}
+const OKO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const OKO_ZAMKNIETE = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+// Ikona elementu według jego wyglądu (łuk, słupki, linia, liczba, lista...).
+const IKONY_STYLU = {
+  luk: '<path d="M4 17a8 8 0 1 1 16 0" stroke-width="2.5"/><path d="M4 17a8 8 0 0 1 5-7.4" stroke-width="2.5" stroke="currentColor" opacity=".45"/>',
+  slupki: '<path d="M6 20V11M12 20V5M18 20v-6" stroke-width="3"/>',
+  pasek: '<rect x="3" y="9" width="18" height="6" rx="3" stroke-width="2"/><path d="M6 12h7" stroke-width="3"/>',
+  linia: '<path d="M3 17l5-5 4 3 8-8" stroke-width="2.2"/><path d="M3 21h18" stroke-width="1.5" opacity=".5"/>',
+  liczba: '<path d="M7 5L5 19M15 5l-2 14M4 9h15M3 15h15" stroke-width="2"/>',
+  lista: '<path d="M9 6h11M9 12h11M9 18h11" stroke-width="2"/><circle cx="4.5" cy="6" r="1.5" fill="currentColor"/><circle cx="4.5" cy="12" r="1.5" fill="currentColor"/><circle cx="4.5" cy="18" r="1.5" fill="currentColor"/>',
+  karty: '<rect x="3" y="4" width="18" height="7" rx="2" stroke-width="2"/><rect x="3" y="14" width="18" height="7" rx="2" stroke-width="2"/>',
+  stan: '<circle cx="12" cy="12" r="8" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/>',
+  tekst: '<path d="M5 6h14M12 6v13" stroke-width="2.2"/>',
+  zegar: '<circle cx="12" cy="12" r="9" stroke-width="2"/><path d="M12 7v5l3 2" stroke-width="2"/>',
+  kod: '<rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><path d="M14 14h3v3M21 17v4h-4" stroke-width="2"/>',
+  ikona: '<path d="M6 16a4 4 0 0 1 .5-8A5.5 5.5 0 0 1 17 8.5 3.8 3.8 0 0 1 18 16z" stroke-width="2"/>',
+};
+function ikonaStylu(c) {
+  const pl = c.split('|')[0];
+  const k = /łuk/.test(pl) ? 'luk' : /słupki/.test(pl) ? 'slupki' : /pas/.test(pl) ? 'pasek' : /linia/.test(pl) ? 'linia'
+    : /cyfry/.test(pl) ? 'zegar' : /ikona/.test(pl) ? 'ikona' : /liczba/.test(pl) ? 'liczba' : /wiersze/.test(pl) ? 'lista'
+    : /karty/.test(pl) ? 'karty' : /kropka|stan/.test(pl) ? 'stan' : /kod/.test(pl) ? 'kod' : 'tekst';
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IKONY_STYLU[k]}</svg>`;
+}
+
+// --- dyski i kontenery ---
+function znacznikDysku(d) {
+  if (d.stan === 'alarm' || d.smart === 'alarm') return `<span class="znacznik a">${T('awaria|failure')}</span>`;
+  if (d.stan === 'uwaga' || d.smart === 'uwaga') return `<span class="znacznik u">${T('uwaga|warning')}</span>`;
+  return '<span class="znacznik">OK</span>';
+}
+function rysujDane() {
+  $('dyski').innerHTML = '';
+  if (!DYSKI.length) $('dyski').innerHTML = `<tr><td colspan="5" class="licznik">${esc(T('Brak danych z Unraida (montowanie /host/emhttp).|No data from Unraid (/host/emhttp mount).'))}</td></tr>`;
+  DYSKI.forEach((d, i) => {
+    const tr = document.createElement('tr');
+    const temp = d.temp == null ? '—' : `${liczba(d.temp, 0)}°C`;
+    tr.innerHTML = `<td><input type="checkbox" id="dysk-${i}" ${wybraneDyski.has(d.nazwa) ? 'checked' : ''}></td><td><label for="dysk-${i}">${esc(d.etykieta)}</label></td><td>${esc(d.rola)}</td><td class="num">${temp}</td><td>${znacznikDysku(d)}</td>`;
+    tr.querySelector('input').onchange = ev => { ev.target.checked ? wybraneDyski.add(d.nazwa) : wybraneDyski.delete(d.nazwa); oznacz('dane'); };
+    $('dyski').appendChild(tr);
+  });
+  $('kontenery').innerHTML = '';
+  if (!KONT.length) $('kontenery').innerHTML = `<tr><td colspan="5" class="licznik">${esc(T('Brak danych z Dockera (montowanie /host/docker/containers).|No data from Docker (/host/docker/containers mount).'))}</td></tr>`;
+  const wybrane = KONT.filter(k => wybraneKont.has(k.nazwa)).length;
+  $('licznik-kont').textContent = `(${wybrane} / 6)`;
+  $('licznik-kont').className = 'licznik' + (wybrane >= 6 ? ' pelny' : '');
+  KONT.forEach((k, i) => {
+    const tr = document.createElement('tr');
+    const zazn = wybraneKont.has(k.nazwa);
+    const blok = !zazn && wybrane >= 6;
+    const stan = k.dziala ? `<span class="znacznik">${T('działa|running')}</span>`
+      : k.stan === 'uwaga' ? `<span class="znacznik u">${T('błąd|error')}</span>` : `<span class="znacznik s">${T('zatrzymany|stopped')}</span>`;
+    const ram = k.ram_mb == null ? '—' : k.ram_mb >= 1024 ? liczba(k.ram_mb / 1024, 1) + ' GB' : k.ram_mb + ' MB';
+    tr.innerHTML = `<td><input type="checkbox" id="kont-${i}" ${zazn ? 'checked' : ''} ${blok ? 'disabled' : ''}></td><td><label for="kont-${i}">${esc(k.nazwa)}</label></td><td>${stan}</td><td class="num">${k.cpu == null ? '—' : liczba(k.cpu, 1) + '%'}</td><td class="num">${ram}</td>`;
+    if (blok) tr.querySelector('input').title = T('Na ekranie mieści się 6 kontenerów. Odznacz inny, żeby dodać ten.|The screen fits 6 containers. Untick another one to add this.');
+    tr.querySelector('input').onchange = ev => { ev.target.checked ? wybraneKont.add(k.nazwa) : wybraneKont.delete(k.nazwa); oznacz('dane'); rysujDane(); };
+    $('kontenery').appendChild(tr);
+  });
+}
+function rysujPomiary() {
+  if (!U) return;
+  $('speedtest').checked = U.speedtest_co_h > 0;
+  $('speedtest-co').disabled = !(U.speedtest_co_h > 0);
+  $('speedtest-co').value = String(U.speedtest_co_h > 0 ? U.speedtest_co_h : 3);
+  $('pogoda').value = U.pogoda_wl ? '1' : '0';
+  $('pogoda-miejsce').disabled = !U.pogoda_wl;
+  $('pogoda-miejsce').value = U.pogoda_miejsce || '';
+  zaznaczKarte('kolejnosc', U.sortuj_awarie ? 'awarie' : 'lista');
+  rysujStanPogody();
+}
+function rysujStanPogody() {
+  const p = S && S.pogoda;
+  let t = '';
+  if (U && U.pogoda_wl && p) t = p.blad ? T('błąd: |error: ') + p.blad : p.biezaca ? `${liczba(p.biezaca.temp, 0)}°C` : '';
+  $('pogoda-stan').textContent = t;
+}
+async function wczytajDane() {
+  try {
+    [DYSKI, KONT] = await Promise.all([api('/api/dyski'), api('/api/kontenery')]);
+    wybraneDyski = new Set(DYSKI.filter(d => d.wybrany).map(d => d.nazwa));
+    wybraneKont = new Set(KONT.filter(k => k.wybrany).map(k => k.nazwa));
+  } catch (e) { DYSKI = []; KONT = []; }
+  rysujDane(); rysujPomiary();
+}
+
+// --- progi ---
+function rysujProgi() {
+  if (!U) return;
+  $('progi').innerHTML = '';
+  PROGI.forEach(([klucz, nazwa, jedn, stalyU, stalyA], i) => {
+    const [u, a, przelacz] = U.progi[klucz] || [null, null, false];
+    const tr = document.createElement('tr');
+    const pole = (stale, v, n) => `<span class="wart">${stale === 'always' ? `<span class="tekst-wart">${T('zawsze|always')}</span>` : v == null ? '<span class="tekst-wart">—</span>' : `<input type="number" min="0" max="150" step="1" id="prog-${i}-${n}" value="${v}" aria-label="${esc(T(nazwa))}">`}<span class="jedn">${stale === 'always' || v == null ? '' : jedn}</span></span>`;
+    tr.innerHTML = `<td>${esc(T(nazwa))}</td><td class="num">${pole(stalyU, u, 'u')}</td><td class="num">${pole(stalyA, a, 'a')}</td><td class="srodek"><input type="checkbox" id="prog-${i}-s" ${przelacz ? 'checked' : ''} aria-label="${esc(T('Przełącz na Alerty|Jump to Alerts'))}"></td>`;
+    tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => oznacz('alarmy')));
+    $('progi').appendChild(tr);
+  });
+  $('kr-przypnij').checked = U.krytyczne_przypnij;
+  $('kr-jasnosc').checked = U.krytyczne_jasnosc;
+  $('kr-naglowek').checked = U.krytyczne_ramka;
+}
+
+// --- urządzenie USB ---
+async function wczytajUrzadzenia() {
+  let lista = [];
+  try { lista = await api('/api/urzadzenia'); } catch (e) { /* brak */ }
+  const w = $('port-wybor');
+  [...w.options].slice(1).forEach(o => o.remove());
+  const porty = new Set(lista.map(e => e.port));
+  if (U && U.port !== 'auto') porty.add(U.port);
+  porty.forEach(p => { const o = document.createElement('option'); o.value = o.textContent = p; w.appendChild(o); });
+  if (U) w.value = U.port;
+}
+
+// --- logi ---
+async function rysujLogi() {
+  if (sekcja !== 'logi') return;
+  let wpisy = [];
+  try { wpisy = await api('/api/logi'); } catch (e) { return; }
+  const f = $('poziom').value;
+  const fmt = c => new Date(c * 1000).toLocaleTimeString(J === 'en' ? 'en-GB' : 'pl-PL', { hour12: false });
+  $('log').innerHTML = wpisy.filter(l => !f || l.poziom !== 'INFO').reverse().slice(0, 300)
+    .map(l => `<div class="${esc(l.poziom)}">${fmt(l.czas)} ${esc(l.poziom.padEnd(7, ' '))} ${esc(l.tekst)}</div>`).join('')
+    || `<div>${esc(T('Brak wpisów.|No entries.'))}</div>`;
+}
+
+// --- stan (pasek u góry i lewy panel) ---
+function pigulka(kolor, etykieta, wartosc, tip) {
+  return `<span class="ps"${tip ? ` title="${esc(tip)}"` : ''}><span class="kropka" style="background:var(--${kolor})"></span>${etykieta} <b>${esc(wartosc)}</b></span>`;
+}
+function rysujStan() {
+  if (!S || !U) return;
+  const sym = S.tryb === 'symulacja';
+  const ekran = sym ? ['akcent', T('symulacja|simulation')] : S.polaczony ? ['ok', T('połączony|connected')] : ['uwaga', T('nie znaleziono|not found')];
+  const brak = T('brak dostępu|no access');
+  let h = pigulka(ekran[0], esc(T('Ekran|Screen')), ekran[1], S.blad || '');
+  const odsw = ` · ${liczba(U.odswiezanie_s)} s`;
+  for (const [k, [nazwa, montowanie]] of Object.entries(ZRODLA)) {
+    const ok = S.zrodla[k];
+    const etykieta = esc(T(nazwa)) + (k === 'docker' ? ` <span class="licznik">${esc(T('(tylko odczyt)|(read only)'))}</span>` : '');
+    h += pigulka(ok ? 'ok' : 'uwaga', etykieta, ok ? 'OK' + (k === 'unraid' ? odsw : '') : brak,
+      ok ? '' : T('Sprawdź montowanie tylko do odczytu: |Check the read-only mount: ') + montowanie);
+  }
+  h += `<span class="ps">${esc(T('Aplikacja|App'))} <b>CPU ${liczba(S.aplikacja.cpu)}% · RAM ${S.aplikacja.ram_mb} MB</b></span>`;
+  $('pasek-stanu').innerHTML = h;
+  const krytyczny = S.alerty.some(a => a.poziom === 'alarm');
+  const tekst = krytyczny ? T('Alert krytyczny: |Critical alert: ') + S.alerty.find(a => a.poziom === 'alarm').tytul
+    : sym ? T('Symulacja, bez ekranu|Simulation, no display') : S.polaczony ? T('Ekran połączony|Display connected') : T('Szukam ekranu…|Looking for the display…');
+  $('stan-boczny').textContent = tekst;
+  $('kropka-boczna').style.background = $('kropka-stanu').style.background =
+    krytyczny ? 'var(--alarm)' : sym ? 'var(--akcent)' : S.polaczony ? 'var(--ok)' : 'var(--uwaga)';
+  $('port-wart').textContent = S.port || '—';
+}
+async function odswiezStan() {
+  try {
+    S = await api('/api/stan');
+    $('blad-polaczenia').hidden = true;
+  } catch (e) { $('blad-polaczenia').hidden = false; return; }
+  rysujStan(); rysujPodglad(); rysujStanPogody(); odswiezObraz();
+}
+function rysujWszystko() {
+  rysujUstawieniaPodgladu(); rysujPodglad(); rysujStan(); if (sekcja === 'ekrany') rysujEdytor();
+  rysujDane(); rysujPomiary(); rysujProgi(); rysujLogi();
+}
+
+// --- zapis grup ---
+function oznacz(g) { brudne[g] = true; $('niezap-' + g).hidden = false; document.querySelector(`.zapisz[data-grupa="${g}"]`).disabled = false; }
+function wyczysc(g) { brudne[g] = false; $('niezap-' + g).hidden = true; document.querySelector(`.zapisz[data-grupa="${g}"]`).disabled = true; }
+function odrzuc(g) {
+  wyczysc(g);
+  if (g === 'ekrany') { ekranyRob = JSON.parse(JSON.stringify(U.ekrany)); }
+  if (g === 'dane') { wczytajDane(); }
+  if (g === 'alarmy') { rysujProgi(); }
+}
+async function zapisz(g) {
+  let zmiany = {};
+  if (g === 'ekrany') zmiany = { ekrany: ekranyRob };
+  if (g === 'dane') {
+    const st = $('speedtest').checked ? +$('speedtest-co').value : 0;
+    zmiany = {
+      sortuj_awarie: aktywnaKarta('kolejnosc') !== 'lista',
+      dyski: DYSKI.length ? DYSKI.filter(d => wybraneDyski.has(d.nazwa)).map(d => d.nazwa) : U.dyski,
+      kontenery: KONT.length ? KONT.filter(k => wybraneKont.has(k.nazwa)).map(k => k.nazwa) : U.kontenery,
+      speedtest_co_h: st, pogoda_wl: $('pogoda').value === '1',
+    };
+    if (DYSKI.length && zmiany.dyski.length === DYSKI.length) zmiany.dyski = null;   // wszystkie, także nowe dyski
+    const miejsce = $('pogoda-miejsce').value.trim();
+    if (zmiany.pogoda_wl && (miejsce !== U.pogoda_miejsce || U.pogoda_lat == null)) {
+      if (!miejsce) { toast(T('Wpisz miejscowość dla pogody.|Enter a town for the weather.'), true); return false; }
+      let wyniki;
+      try { wyniki = await api('/api/pogoda/szukaj?' + new URLSearchParams({ q: miejsce, jezyk: J })); }
+      catch (e) { toast(T('Wyszukiwarka miejscowości nie odpowiada: |Town search is not responding: ') + e.message, true); return false; }
+      if (!wyniki.length) { toast(T('Nie znaleziono miejscowości: |Town not found: ') + miejsce, true); return false; }
+      const w = wyniki[0];
+      Object.assign(zmiany, { pogoda_miejsce: w.nazwa + (w.region ? ', ' + w.region : ''), pogoda_lat: w.lat, pogoda_lon: w.lon });
+    }
+  }
+  if (g === 'alarmy') {
+    const progi = {};
+    PROGI.forEach(([klucz], i) => {
+      const [u, a] = U.progi[klucz] || [null, null];
+      const wartosc = (n, dom) => { const p = $(`prog-${i}-${n}`); return p && p.value !== '' ? +p.value : dom; };
+      progi[klucz] = [wartosc('u', u), wartosc('a', a), $(`prog-${i}-s`).checked];
+    });
+    zmiany = { progi, krytyczne_przypnij: $('kr-przypnij').checked, krytyczne_jasnosc: $('kr-jasnosc').checked, krytyczne_ramka: $('kr-naglowek').checked };
+  }
+  if (!(await ustaw(zmiany, 'Zapisano|Saved'))) return false;
+  wyczysc(g);
+  if (g === 'ekrany') ekranyRob = JSON.parse(JSON.stringify(U.ekrany));
+  if (g === 'dane') { await wczytajDane(); }
+  if (g === 'alarmy') rysujProgi();
+  return true;
+}
+function toast(t, blad) {
+  $('toast-tekst').textContent = t;
+  $('toast').style.borderColor = blad ? 'var(--alarm)' : 'var(--ok)';
+  $('toast').firstElementChild.textContent = blad ? '!' : '✓';
+  $('toast').firstElementChild.style.color = blad ? 'var(--alarm)' : 'var(--ok)';
+  $('toast').hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => $('toast').hidden = true, blad ? 5000 : 2200);
+}
+
+// --- nawigacja między sekcjami ---
+function pokaz(s) {
+  if (brudne[sekcja] && s !== sekcja) { czekajacaSekcja = s; $('dialog').hidden = false; $('d-zapisz').focus(); return; }
+  sekcja = s;
+  document.querySelectorAll('main section').forEach(e => e.hidden = e.id !== s);
+  document.querySelectorAll('nav .poz').forEach(b => b.classList.toggle('on', b.dataset.s === s));
+  if (location.hash.slice(1) !== s) history.replaceState(null, '', '#' + s);
+  if (s === 'ekrany') { wersjaMiniatur++; rysujEdytor(); }
+  if (s === 'dane' && !brudne.dane) wczytajDane();
+  if (s === 'urzadzenie') wczytajUrzadzenia();
+  if (s === 'logi') rysujLogi();
+  if (s === 'podglad') odswiezObraz();
+}
+$('d-anuluj').onclick = () => { $('dialog').hidden = true; czekajacaSekcja = null; };
+$('d-odrzuc').onclick = () => { odrzuc(sekcja); $('dialog').hidden = true; pokaz(czekajacaSekcja); };
+$('d-zapisz').onclick = async () => { if (await zapisz(sekcja)) { $('dialog').hidden = true; pokaz(czekajacaSekcja); } };
+window.addEventListener('beforeunload', e => { if (Object.values(brudne).some(Boolean)) { e.preventDefault(); e.returnValue = ''; } });
+
+// --- karty wyboru ---
+function zaznaczKarte(id, v) { $(id).querySelectorAll('.kw').forEach(k => { k.classList.toggle('on', k.dataset.v === v); k.setAttribute('aria-checked', k.dataset.v === v); }); }
+function aktywnaKarta(id) { const k = $(id).querySelector('.kw.on'); return k && k.dataset.v; }
+function radio(id, fn) {
+  $(id).querySelectorAll('.kw').forEach(k => {
+    const wybierz = () => { if (k.classList.contains('on')) return; zaznaczKarte(id, k.dataset.v); fn(k.dataset.v); };
+    k.onclick = wybierz;
+    k.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); wybierz(); } };
+  });
+}
+
+// --- zdarzenia ---
+document.querySelectorAll('nav .poz').forEach(b => b.onclick = () => pokaz(b.dataset.s));
+document.querySelectorAll('[data-j]').forEach(b => b.onclick = () => {
+  J = b.dataset.j;
+  try { localStorage.setItem('lcd-jezyk-panelu', J); } catch (e) { /* bez zapamiętania */ }
+  tlumacz();
+});
+document.querySelectorAll('.zapisz').forEach(b => b.onclick = () => zapisz(b.dataset.grupa));
+const nawiguj = (akcja, klucz) => api('/api/nawigacja', { method: 'POST', body: JSON.stringify({ akcja, klucz }) }).then(odswiezStan).catch(e => toast(e.message, true));
+$('poprz').onclick = () => nawiguj('poprzedni');
+$('nast').onclick = () => nawiguj('nastepny');
+$('pauza').onclick = () => nawiguj(S && S.pauza ? 'wznow' : 'pauza');
+$('alert-testowy').onclick = async () => {
+  const testowy = S && S.alerty.some(a => a.id === 'zew:test-panelu');
+  try { await api('/api/alert-testowy?jezyk=' + (U ? U.jezyk : 'pl'), { method: testowy ? 'DELETE' : 'POST' }); } catch (e) { toast(e.message, true); }
+  setTimeout(odswiezStan, 400);
+};
+let opoznienieJasnosci = null;
+$('jasnosc').oninput = () => {
+  $('jasnosc-wart').textContent = $('jasnosc').value + '%';
+  clearTimeout(opoznienieJasnosci);
+  opoznienieJasnosci = setTimeout(() => ustaw({ jasnosc: +$('jasnosc').value }), 250);
+};
+$('odswiezanie').onchange = () => ustaw({ odswiezanie_s: +$('odswiezanie').value }, 'Zapisano|Saved');
+$('przelaczanie').onchange = () => ustaw({ przelaczanie_s: +$('przelaczanie').value }, 'Zapisano|Saved').then(odswiezStan);
+$('jezyk-ekranu').onchange = () => ustaw({ jezyk: $('jezyk-ekranu').value }, 'Zapisano|Saved').then(() => { wersjaMiniatur++; if (sekcja === 'ekrany') rysujEdytor(); });
+$('noc').onchange = () => ustaw({ noc_wl: $('noc').checked }, 'Zapisano|Saved').then(rysujUstawieniaPodgladu);
+$('noc-od').onchange = () => ustaw({ noc_od: $('noc-od').value }, 'Zapisano|Saved');
+$('noc-do').onchange = () => ustaw({ noc_do: $('noc-do').value }, 'Zapisano|Saved');
+$('czas-ekranu').onchange = () => { ekranyRob[wybranyEdytor].czas_s = +$('czas-ekranu').value; oznacz('ekrany'); rysujMiniatury(); };
+$('widoczny').onchange = () => { ekranyRob[wybranyEdytor].wl = $('widoczny').checked; oznacz('ekrany'); rysujMiniatury(); };
+$('poziom').onchange = rysujLogi;
+$('pobierz').onclick = () => { location.href = '/api/logi.txt'; };
+$('eksport').onclick = () => { location.href = '/api/motyw/eksport'; };
+$('import').onclick = () => $('plik-motywu').click();
+$('plik-motywu').onchange = async () => {
+  const plik = $('plik-motywu').files[0];
+  $('plik-motywu').value = '';
+  if (!plik) return;
+  let dane;
+  try { dane = JSON.parse(await plik.text()); } catch (e) { toast(T('To nie jest plik JSON.|This is not a JSON file.'), true); return; }
+  try { U = await api('/api/motyw/import', { method: 'POST', body: JSON.stringify(dane) }); }
+  catch (e) { toast(T('Import nieudany: |Import failed: ') + e.message, true); return; }
+  ekranyRob = JSON.parse(JSON.stringify(U.ekrany)); wersjaMiniatur++;
+  rysujWszystko(); toast(T('Motyw zaimportowany|Theme imported'));
+};
+$('test').onclick = async () => {
+  const w = $('wynik-testu');
+  if (U && U.tryb !== 'usb') { w.className = 'znacznik s'; w.textContent = T('Tryb symulacji: brak ekranu do testu|Simulation mode: no display to test'); return; }
+  w.className = 'znacznik s'; w.textContent = T('Wysyłam pełną klatkę…|Sending a full frame…');
+  try {
+    const r = await api('/api/test', { method: 'POST' });
+    const czas = new Date().toLocaleTimeString(J === 'en' ? 'en-GB' : 'pl-PL', { hour: '2-digit', minute: '2-digit' });
+    if (r.polaczony && r.czas_klatki_s != null) { w.className = 'znacznik'; w.textContent = `OK · ${czas} · ${T('pełna klatka|full frame')} ${liczba(r.czas_klatki_s, 2)} s`; }
+    else { w.className = 'znacznik a'; w.textContent = r.blad || T('Nie znaleziono ekranu|Display not found'); }
+  } catch (e) { w.className = 'znacznik a'; w.textContent = e.message; }
+  odswiezStan();
+};
+$('port-wybor').onchange = () => ustaw({ port: $('port-wybor').value }, 'Zapisano|Saved');
+radio('obrot', v => ustaw({ orientacja: v }, 'Obrót zmieniony|Rotation changed').then(() => { wersjaMiniatur++; rysujPodglad(); if (sekcja === 'ekrany') rysujEdytor(); odswiezStan(); }));
+radio('tryb', v => ustaw({ tryb: v }, 'Zapisano|Saved').then(() => { $('wynik-testu').className = 'znacznik s'; $('wynik-testu').textContent = '—'; odswiezStan(); }));
+radio('kolejnosc', () => oznacz('dane'));
+radio('motyw', v => ustaw({ motyw: v }, 'Motyw ustawiony|Theme set').then(() => { wersjaMiniatur++; odswiezStan(); }));
+$('speedtest').onchange = () => { $('speedtest-co').disabled = !$('speedtest').checked; oznacz('dane'); };
+$('speedtest-co').onchange = () => oznacz('dane');
+$('pogoda').onchange = () => { $('pogoda-miejsce').disabled = $('pogoda').value === '0'; oznacz('dane'); };
+$('pogoda-miejsce').oninput = () => oznacz('dane');
+['kr-przypnij', 'kr-jasnosc', 'kr-naglowek'].forEach(id => $(id).onchange = () => oznacz('alarmy'));
+window.addEventListener('hashchange', () => { const s = location.hash.slice(1); if ($(s) && s !== sekcja) pokaz(s); });
+
+// --- start ---
+(async function start() {
+  try {
+    [U, REJESTR] = await Promise.all([api('/api/ustawienia'), api('/api/ekrany')]);
+  } catch (e) {
+    $('blad-polaczenia').hidden = false;
+    setTimeout(start, 2000);
+    return;
+  }
+  if (J !== 'pl' && J !== 'en') J = U.jezyk === 'en' ? 'en' : 'pl';
+  ekranyRob = JSON.parse(JSON.stringify(U.ekrany));
+  await odswiezStan();
+  tlumacz();
+  const s = location.hash.slice(1);
+  pokaz($(s) && document.querySelector(`nav [data-s="${s}"]`) ? s : 'podglad');
+  setInterval(odswiezStan, 2000);
+  setInterval(() => { if (sekcja === 'logi') rysujLogi(); }, 5000);
+  setInterval(() => { if (sekcja === 'ekrany' && !document.hidden) { wersjaMiniatur++; rysujEdytor(); } }, 30000);
+  requestAnimationFrame(() => window.scrollTo(0, 0));
+})();
+
+</script>
+</body>
+</html>

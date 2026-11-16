@@ -26,4 +26,6 @@ jobs:
             --cap-drop ALL --read-only --tmpfs /tmp unraid-lcd:test
           for i in $(seq 1 20); do curl -fs localhost:8765/api/stan && break; sleep 1; done
           curl -fs -o podglad.png localhost:8765/api/podglad.png
+          curl -fs localhost:8765/ | grep -q '<title>Unraid LCD</title>'
+          curl -fs -o system.png localhost:8765/api/ekran/system.png
           docker logs lcd

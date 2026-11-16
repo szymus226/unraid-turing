@@ -26,7 +26,7 @@ EKRANY: dict[str, OpisEkranu] = {e.klucz: e for e in [
         ("Kafelek 1|Tile 1", "Temperatura CPU|CPU temperature", "liczba|number"),
         ("Kafelek 2|Tile 2", "Czas pracy|Uptime", "liczba|number"),
         ("Słupki|Bars", "Rdzenie CPU|CPU cores", "słupki|bars"),
-        ("Wykres|Chart", "CPU, ostatnie 40 s|CPU, last 40 s", "linia|line"),
+        ("Wykres|Chart", "CPU, ostatnie 60 s|CPU, last 60 s", "linia|line"),
         ("Paski|Bars", "RAM, SWAP|RAM, swap", "pasek|bar"),
         ("Kafelki dolne|Bottom tiles", "Load, sieć LAN|Load, LAN", "liczba|number")]),
     OpisEkranu("dyski", "Dyski|Disks", rysuj.ekran_dyski, poziome.ekran_dyski, [

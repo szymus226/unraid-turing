@@ -13,6 +13,21 @@ services:
       - /mnt/user/appdata/unraid-lcd:/config
       - /dev:/dev-host:ro
       - /proc:/host/proc:ro
+      # Dane Unraida, wszystkie tylko do odczytu. Bez gniazda Dockera: ono dawałoby pełną kontrolę nad serwerem.
+      # Unraid data, all read-only. No Docker socket: it would give full control of the server.
+      - /var/local/emhttp:/host/emhttp:ro                   # array, dyski, SMART, parity / array, disks, SMART, parity
+      - /var/lib/docker/containers:/host/docker/containers:ro   # nazwa i stan kontenerów / container names and state
+      - /sys/fs/cgroup:/host/cgroup:ro                      # CPU i RAM kontenerów / container CPU and RAM
+      - /etc/libvirt:/host/libvirt-etc:ro                   # lista VM / VM list
+      - /var/run/libvirt:/host/libvirt-run:ro               # które VM działają / which VMs are running
+      - /tmp/notifications:/host/notifications:ro           # powiadomienia Unraida / Unraid notifications
+      # Opcjonalne (ekran Aktualizacje). Odkomentuj tylko, gdy ścieżka istnieje na serwerze:
+      # Docker utworzyłby brakujący plik jako katalog. /boot/config/plugins może zawierać hasła wtyczek.
+      # Optional (Updates screen). Uncomment only if the path exists on the server:
+      # Docker would create a missing file as a directory. /boot/config/plugins may hold plugin passwords.
+      # - /var/lib/docker/unraid-update-status.json:/host/docker-update-status.json:ro
+      # - /tmp/plugins:/host/plugins-nowe:ro
+      # - /boot/config/plugins:/host/plugins:ro
     device_cgroup_rules:
       - "c 166:* rw"
     cap_drop:
@@ -22,5 +37,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    environment:
+      - TZ=Europe/Warsaw          # godzina na zegarze / clock time zone
+      # - LCD_ADRES_PANELU=http://192.168.x.x:8766   # adres w kodzie QR, gdy nazwa .local nie działa / QR address if .local fails
+      # - LCD_TOKEN=...                              # token alertów z zewnątrz; domyślnie /config/token.txt / external alert token
     mem_limit: 160m
     cpus: 0.5
