@@ -170,10 +170,10 @@ def ekran_system(t, dane):
     x0 = W - M - 126
     karta(d, x0, 54, 126, 62)
     d.text((x0 + 12, 66), t["temp"] + " CPU", font=font(13), fill=KOLORY["szary"])
-    d.text((x0 + 12, 84), f"{temp:.0f}°C" if temp is not None else "—", font=font(26, "Bold"), fill=kt)
+    d.text((W - M - 12, 84), f"{temp:.0f}°C" if temp is not None else "—", font=font(26, "Bold"), fill=kt, anchor="ra")
     karta(d, x0, 124, 126, 56)
     d.text((x0 + 12, 133), t["uptime"], font=font(13), fill=KOLORY["szary"])
-    d.text((x0 + 12, 151), dane["uptime"], font=font(21, "Bold"), fill=KOLORY["tekst"])
+    d.text((W - M - 12, 151), dane["uptime"], font=font(21, "Bold"), fill=KOLORY["tekst"], anchor="ra")
     # rdzenie
     y0, wys = 194, 36
     n = len(dane["rdzenie"]); szer = (W - 2 * M - (n - 1) * 4) / n
@@ -203,11 +203,13 @@ def ekran_system(t, dane):
     y = 400
     karta(d, M, y, szer, 58); karta(d, W - M - szer, y, szer, 58)
     d.text((M + 10, y + 8), t["load"], font=font(12), fill=KOLORY["szary"])
-    d.text((M + 10, y + 28), "  ".join(liczba(v, t["_j"], 2) for v in dane["load"]), font=font(15, "SemiBold"), fill=KOLORY["tekst"])
+    d.text((M + szer - 10, y + 28), "  ".join(liczba(v, t["_j"], 2) for v in dane["load"]), font=font(15, "SemiBold"), fill=KOLORY["tekst"], anchor="ra")
     x = W - M - szer + 10
     d.text((x, y + 8), t["siec"], font=font(12), fill=KOLORY["szary"])
-    d.text((x, y + 24), f"↓ {dane['rx']}", font=font(13, "SemiBold"), fill=KOLORY["ok"])
-    d.text((x, y + 40), f"↑ {dane['tx']}", font=font(13, "SemiBold"), fill=KOLORY["akcent"])
+    # strzałka przy lewej krawędzi, liczba wyrównana do prawej
+    for dy, znak, wartosc, kolor in ((24, "↓", dane["rx"], KOLORY["ok"]), (40, "↑", dane["tx"], KOLORY["akcent"])):
+        d.text((x, y + dy), znak, font=font(13, "SemiBold"), fill=kolor)
+        d.text((W - M - 10, y + dy), wartosc, font=font(13, "SemiBold"), fill=kolor, anchor="ra")
     return img
 
 
