@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from PIL import Image, ImageDraw
 
+from .pogoda import OPISY, ikona, rodzaj_pogody
 from .rysuj import (H, KOLORY, M, W, font, karta, kolor_progu, liczba, naglowek, obramowanie,
                     problemy_na_gorze)
 
@@ -20,7 +21,9 @@ TEKSTY = {
            "do_aktualizacji": "do aktualizacji", "kopia": "Kopia appdata", "parity": "Kontrola parity",
            "restart": "Ostatni restart", "temu": "temu", "bledow": "błędów",
            "wszystko_ok": "Wszystko w porządku", "zeskanuj": "Zeskanuj telefonem, żeby otworzyć panel",
-           "tylko_lan": "działa tylko w sieci domowej", "pogoda": "pochmurno"},
+           "tylko_lan": "działa tylko w sieci domowej",
+           "speedtest": "SPEEDTEST", "ostatni": "Ostatni test", "co": "co", "ping": "Ping",
+           "h72": "Ostatnie 72 h", "teraz": "teraz", "nastepny": "Następny test"},
     "en": {"ruch_dyskow": "DISK ACTIVITY", "historia": "LAST 24 H", "siec_t": "NETWORK", "aktualizacje": "UPDATES",
            "zegar": "", "qr": "PANEL", "odczyt": "read", "zapis": "write", "uspiony": "spun down",
            "razem": "Total", "min": "min", "maks": "max", "sr": "avg", "temp_cpu": "CPU temp.",
@@ -31,7 +34,9 @@ TEKSTY = {
            "do_aktualizacji": "to update", "kopia": "Appdata backup", "parity": "Parity check",
            "restart": "Last restart", "temu": "ago", "bledow": "errors",
            "wszystko_ok": "All good", "zeskanuj": "Scan with your phone to open the panel",
-           "tylko_lan": "works on your home network only", "pogoda": "cloudy"},
+           "tylko_lan": "works on your home network only",
+           "speedtest": "SPEEDTEST", "ostatni": "Last test", "co": "every", "ping": "Ping",
+           "h72": "Last 72 h", "teraz": "now", "nastepny": "Next test"},
 }
 
 DNI = {"pl": ["poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela"],
@@ -42,7 +47,7 @@ MIESIACE = {"pl": ["stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca",
                    "September", "October", "November", "December"]}
 
 # Indeksy nowych ekranów w kolejce (po pięciu podstawowych).
-INDEKS = {"ruch": 5, "historia": 6, "siec": 7, "aktualizacje": 8, "zegar": 9, "qr": 10}
+INDEKS = {"ruch": 5, "historia": 6, "siec": 7, "speedtest": 8, "aktualizacje": 9, "zegar": 10, "qr": 11}
 
 
 def _wykres(d, x0, y0, szer, wys, wartosci, kolor, maks=None, wypelnienie=True):
@@ -141,6 +146,47 @@ def ekran_siec(t, dane):
     return obramowanie(img, dane)
 
 
+def ekran_speedtest(t, dane):
+    """Okresowy pomiar prędkości łącza z historią z 72 h (pomiar co kilka godzin, domyślnie wyłączony)."""
+    img = Image.new("RGB", (W, H), KOLORY["tlo"]); d = ImageDraw.Draw(img)
+    naglowek(d, t["speedtest"], INDEKS["speedtest"], dane)
+    s = dane["speedtest"]
+    j = t["_j"]
+    # ostatni wynik
+    karta(d, M, 54, W - 2 * M, 112)
+    d.text((M + 12, 64), t["pobieranie"], font=font(13), fill=KOLORY["szary"])
+    d.text((M + 12, 82), f"↓ {s['pobieranie'][-1]:.0f}", font=font(30, "Bold"), fill=KOLORY["ok"])
+    d.text((W - M - 12, 64), t["wysylanie"], font=font(13), fill=KOLORY["szary"], anchor="ra")
+    d.text((W - M - 12, 82), f"↑ {s['wysylanie'][-1]:.0f}", font=font(30, "Bold"), fill=KOLORY["akcent"], anchor="ra")
+    d.text((M + 12, 120), "Mb/s", font=font(13), fill=KOLORY["szary"])
+    d.text((W - M - 12, 120), "Mb/s", font=font(13), fill=KOLORY["szary"], anchor="ra")
+    d.text((W // 2, 98), f"{s['ping'][-1]:.0f} ms", font=font(17, "SemiBold"), fill=KOLORY["tekst"], anchor="mm")
+    d.text((W // 2, 120), t["ping"], font=font(13), fill=KOLORY["szary"], anchor="mt")
+    d.line((M + 12, 142, W - M - 12, 142), fill=KOLORY["linia"])
+    d.text((M + 12, 152), f"{t['ostatni']} {s['ostatni']}", font=font(12), fill=KOLORY["szary"], anchor="lm")
+    d.text((W - M - 12, 152), f"{t['co']} {s['co_h']} h", font=font(12), fill=KOLORY["szary"], anchor="rm")
+    # historia 72 h
+    y0 = 178
+    karta(d, M, y0, W - 2 * M, 206)
+    d.text((M + 12, y0 + 10), t["h72"], font=font(13, "SemiBold"), fill=KOLORY["tekst"])
+    x0, szer, wys, yw = M + 12, W - 2 * M - 24, 104, y0 + 38
+    for i in range(1, 3):  # granice dób
+        x = x0 + szer * i / 3
+        for yy in range(yw, yw + wys, 6):
+            d.line((x, yy, x, yy + 2), fill=KOLORY["linia"])
+    maks = max(s["pobieranie"]) * 1.1
+    _wykres(d, x0, yw, szer, wys, s["pobieranie"], KOLORY["ok"], maks)
+    _wykres(d, x0, yw, szer, wys, s["wysylanie"], KOLORY["akcent"], maks, wypelnienie=False)
+    for i, etykieta in enumerate(("-72 h", "-48 h", "-24 h", t["teraz"])):
+        d.text((x0 + szer * i / 3, yw + wys + 8), etykieta, font=font(11), fill=KOLORY["szary"],
+               anchor="la" if i == 0 else "ra" if i == 3 else "ma")
+    p = s["pobieranie"]
+    d.text((M + 12, y0 + 194), f"↓ {t['min']} {min(p):.0f} · {t['sr']} {sum(p) / len(p):.0f} · {t['maks']} {max(p):.0f}",
+           font=font(12), fill=KOLORY["szary"], anchor="ls")
+    _wiersz_stanu(d, 400, t["nastepny"], s["nastepny"], "szary")
+    return obramowanie(img, dane)
+
+
 def ekran_aktualizacje(t, dane):
     img = Image.new("RGB", (W, H), KOLORY["tlo"]); d = ImageDraw.Draw(img)
     naglowek(d, t["aktualizacje"], INDEKS["aktualizacje"], dane)
@@ -171,7 +217,7 @@ def ekran_zegar(t, dane):
     d.text((W // 2, 222), DNI[t["_j"]][z["dzien_tyg"]], font=font(20, "SemiBold"), fill=KOLORY["szary"], anchor="mm")
     d.text((W // 2, 250), f"{z['dzien']} {MIESIACE[t['_j']][z['miesiac'] - 1]}", font=font(20, "SemiBold"), fill=KOLORY["szary"], anchor="mm")
     if z.get("pogoda") is not None:
-        d.text((W // 2, 310), f"{z['pogoda']}°C · {t['pogoda']}", font=font(18), fill=KOLORY["tekst"], anchor="mm")
+        _pogoda(img, d, t, z["pogoda"])
     krytyczne, ostrzezenia = (sum(1 for a in dane.get("alerty", []) if a[0] == p) for p in ("alarm", "uwaga"))
     if krytyczne:
         stan, tekst = "alarm", f"{krytyczne} {t['krytyczne'].lower()}"
@@ -184,6 +230,22 @@ def ekran_zegar(t, dane):
     d.ellipse((x, H - M - 26, x + 12, H - M - 14), fill=KOLORY[stan])
     d.text((x + 22, H - M - 20), tekst, font=font(15, "SemiBold"), fill=KOLORY["szary"], anchor="lm")
     return obramowanie(img, dane)
+
+
+def _pogoda(img, d, t, p):
+    """Ikona, temperatura i opis wyśrodkowane jako jedna grupa pod datą."""
+    rodzaj = rodzaj_pogody(p["kod"])
+    temp = f"{liczba(p['temp'], t['_j'], 0)}°C"
+    opis = OPISY[t["_j"]][rodzaj]
+    ft, fo = font(34, "Bold"), font(15)
+    szer_tekstu = max(d.textlength(temp, font=ft), d.textlength(opis, font=fo))
+    rozmiar, odstep = 64, 14
+    x = round(W / 2 - (rozmiar + odstep + szer_tekstu) / 2)
+    y = 330
+    img.paste(ikona(rodzaj, p.get("dzien", True), rozmiar, KOLORY["tlo"]), (x, y - rozmiar // 2))
+    xt = x + rozmiar + odstep
+    d.text((xt, y - 6), temp, font=ft, fill=KOLORY["tekst"], anchor="ls")
+    d.text((xt, y + 18), opis, font=fo, fill=KOLORY["szary"], anchor="ls")
 
 
 def ekran_qr(t, dane):
@@ -211,7 +273,7 @@ def ekran_qr(t, dane):
 
 
 PRZYKLADOWE = {
-    "ekrany_razem": 11,
+    "ekrany_razem": 12,
     "dyski_io": [("Parity", True, 0.0, 12.4, "ok"), ("Disk 1", True, 45.2, 12.4, "ok"), ("Disk 2", False, 0, 0, "ok"),
                  ("Disk 3", True, 0.8, 0.0, "uwaga"), ("Disk 4", False, 0, 0, "ok"), ("Cache", True, 3.1, 22.7, "ok")],
     "hist_cpu": [12, 10, 9, 8, 8, 9, 14, 22, 35, 28, 24, 20, 26, 31, 44, 38, 29, 25, 23, 27, 33, 29, 24, 23],
@@ -222,7 +284,12 @@ PRZYKLADOWE = {
              "hist_tx": [0.3, 0.2, 0.4, 0.5, 0.9, 1.4, 1.1, 0.8, 0.6, 0.5, 0.6, 0.7, 1.0, 0.9, 0.8], "tunel": True},
     "aktualizacje": {"wersja": "7.2.1", "unraid_nowa": None, "wtyczki": 2, "kontenery": 5,
                      "kopia": "wczoraj 03:00", "kopia_stan": "ok", "parity": "1 lis", "parity_bledy": 0, "restart": "12 dni"},
-    "zegar": {"godzina": "21:42", "dzien_tyg": 0, "dzien": 16, "miesiac": 11, "pogoda": 4},
+    "zegar": {"godzina": "21:42", "dzien_tyg": 0, "dzien": 16, "miesiac": 11,
+              "pogoda": {"temp": 4, "kod": 2, "dzien": False}},
+    "speedtest": {"pobieranie": [612, 598, 640, 655, 631, 420, 388, 512, 604, 622, 649, 660, 637, 590, 402, 377,
+                                 498, 611, 628, 652, 663, 641, 585, 604],
+                  "wysylanie": [48, 47, 49, 50, 49, 41, 36, 44, 48, 49, 50, 50, 49, 47, 40, 35, 43, 48, 49, 50, 50, 49, 47, 48],
+                  "ping": [12] * 23 + [11], "ostatni": "21:00", "co_h": 3, "nastepny": "00:00"},
     "adres_panelu": "http://tower.local:8766",
 }
 
@@ -235,5 +302,6 @@ def wszystkie(jezyk="pl", dane=None):
         dane["aktualizacje"] = dict(dane["aktualizacje"], kopia="yesterday 03:00", parity="Nov 1", restart="12 days")
     t = dict(TEKSTY_PODST[jezyk], **TEKSTY[jezyk], _j=jezyk)
     return {"6-ruch-dyskow": ekran_ruch_dyskow(t, dane), "7-historia": ekran_historia(t, dane),
-            "8-siec": ekran_siec(t, dane), "9-aktualizacje": ekran_aktualizacje(t, dane),
+            "8-siec": ekran_siec(t, dane), "8b-speedtest": ekran_speedtest(t, dane),
+            "9-aktualizacje": ekran_aktualizacje(t, dane),
             "10-zegar": ekran_zegar(t, dane), "11-qr": ekran_qr(t, dane)}

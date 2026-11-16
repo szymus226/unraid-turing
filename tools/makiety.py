@@ -28,3 +28,16 @@ if __name__ == "__main__":
         for i, obraz in enumerate(nowe.values()):
             zestawienie.paste(obraz, (20 + i * (W + 20), 20))
         zestawienie.save(WYJSCIE / f"lcd-{jezyk}-zestawienie-dodatkowe.png")
+        # Wszystkie ikony pogody (dzień i noc) z opisami, do oceny wyglądu.
+        from PIL import ImageDraw
+        from app.ekrany.pogoda import OPISY, ikona
+        from app.ekrany.rysuj import KOLORY, font
+        rodzaje = list(OPISY[jezyk])
+        arkusz = Image.new("RGB", (len(rodzaje) * 160 + 20, 260), KOLORY["tlo"])
+        d = ImageDraw.Draw(arkusz)
+        for i, rodzaj in enumerate(rodzaje):
+            x = 20 + i * 160
+            arkusz.paste(ikona(rodzaj, True, 64, KOLORY["tlo"]), (x + 38, 20))
+            arkusz.paste(ikona(rodzaj, False, 64, KOLORY["tlo"]), (x + 38, 110))
+            d.text((x + 70, 210), OPISY[jezyk][rodzaj], font=font(13), fill=KOLORY["szary"], anchor="ma")
+        arkusz.save(WYJSCIE / f"lcd-{jezyk}-pogoda-ikony.png")
