@@ -31,7 +31,7 @@ KATALOG_DEV = os.environ.get("LCD_DEV", "/dev")
 KATALOG_SYS = os.environ.get("LCD_SYS", "/sys")
 KATALOG_PROC = os.environ.get("LCD_PROC", "/proc")
 PANEL = Path(__file__).parent / "panel" / "index.html"
-WERSJA = "0.2.0"
+WERSJA = os.environ.get("LCD_WERSJA", "0.2.0")
 
 # Klucze ustawień zapisywane razem z motywem (eksport/import układu).
 KLUCZE_MOTYWU = ("motyw", "orientacja", "ekrany", "progi", "sortuj_awarie", "krytyczne_przypnij",
