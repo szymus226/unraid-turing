@@ -30,6 +30,7 @@ TEKSTY = {
            "dzialaja": "działa", "zatrzymane": "zatrzymane", "maszyny": "Maszyny VM",
            "postep": "Postęp", "predkosc": "Prędkość", "koniec": "Koniec za",
            "bledy": "Błędy", "brak_alertow": "Wszystko w porządku", "dni": "d",
+           "krytyczne": "KRYTYCZNY", "przypiety": "Ekran zostaje do usunięcia problemu",
            "wolne": "wolne", "z": "z"},
     "en": {"system": "SYSTEM", "dyski": "DISKS", "docker": "DOCKER", "parity": "PARITY",
            "alerty": "ALERTS", "cpu": "CPU", "ram": "RAM", "swap": "SWAP", "temp": "Temp.",
@@ -39,6 +40,7 @@ TEKSTY = {
            "dzialaja": "running", "zatrzymane": "stopped", "maszyny": "VMs",
            "postep": "Progress", "predkosc": "Speed", "koniec": "Finishes in",
            "bledy": "Errors", "brak_alertow": "All good", "dni": "d",
+           "krytyczne": "CRITICAL", "przypiety": "Stays on until the problem is fixed",
            "wolne": "free", "z": "of"},
 }
 
@@ -62,6 +64,14 @@ PRZYKLADOWE_DANE = {
                ("uwaga", "SMART Disk 3", "realokowane sektory: 8")],
 }
 
+# Wariant z alertem krytycznym (makieta zachowania priorytetowego).
+PRZYKLADOWE_DANE_KRYTYCZNE = dict(PRZYKLADOWE_DANE, alerty=[
+    ("alarm", "Disk 2: wyłączony", "usunięty z array · 19:28"),
+    ("uwaga", "Disk 3: 47°C", "próg 45°C"),
+    ("uwaga", "paperless", "zatrzymany 14:05"),
+    ("uwaga", "SMART Disk 3", "realokowane sektory: 8"),
+])
+
 
 @lru_cache(maxsize=64)
 def font(rozmiar, waga="Regular"):
@@ -77,14 +87,46 @@ def kolor_progu(wartosc, uwaga, alarm):
     return KOLORY["alarm"] if wartosc >= alarm else KOLORY["uwaga"] if wartosc >= uwaga else KOLORY["ok"]
 
 
+WAGA_STANU = {"alarm": 0, "uwaga": 1}
+
+
+def problemy_na_gorze(lista, indeks_stanu, dane):
+    """Gdy włączone (domyślnie), elementy z awarią idą na górę: najpierw alarm, potem uwaga.
+    Sortowanie stabilne, więc reszta zostaje w kolejności z ustawień."""
+    if not dane.get("sortuj_awarie", True):
+        return list(lista)
+    return sorted(lista, key=lambda e: WAGA_STANU.get(e[indeks_stanu], 2))
+
+
+def licznik_alertow(dane):
+    alerty = dane.get("alerty") or []
+    return (sum(1 for a in alerty if a[0] == "alarm"), sum(1 for a in alerty if a[0] == "uwaga"))
+
+
 def naglowek(d, tytul, indeks, dane):
-    d.rectangle((0, 0, W, 40), fill=KOLORY["karta"])
-    d.text((M, 20), tytul, font=font(18, "Bold"), fill=KOLORY["tekst"], anchor="lm")
-    d.text((W - M, 20), dane["godzina"], font=font(16, "SemiBold"), fill=KOLORY["szary"], anchor="rm")
+    krytyczne, ostrzezenia = licznik_alertow(dane)
+    # Alert krytyczny barwi nagłówek każdego ekranu na czerwono.
+    tlo = KOLORY["alarm"] if krytyczne else KOLORY["karta"]
+    d.rectangle((0, 0, W, 40), fill=tlo)
+    f = font(18, "Bold")
+    d.text((M, 20), tytul, font=f, fill=KOLORY["tekst"], anchor="lm")
+    d.text((W - M, 20), dane["godzina"], font=font(16, "SemiBold"),
+           fill=KOLORY["tekst"] if krytyczne else KOLORY["szary"], anchor="rm")
     # kropki widoków (który ekran z pięciu)
     for i in range(5):
         x = W // 2 + 18 + i * 12
-        d.ellipse((x - 3, 17, x + 3, 23), fill=KOLORY["akcent"] if i == indeks else KOLORY["linia"])
+        if krytyczne:
+            kolor = KOLORY["tekst"] if i == indeks else (200, 90, 90)
+        else:
+            kolor = KOLORY["akcent"] if i == indeks else KOLORY["linia"]
+        d.ellipse((x - 3, 17, x + 3, 23), fill=kolor)
+    # Licznik: biały z liczbą krytycznych albo żółty z liczbą ostrzeżeń.
+    if krytyczne or ostrzezenia:
+        x0 = M + d.textlength(tytul, font=f) + 10
+        tekst = f"! {krytyczne or ostrzezenia}"
+        szer = d.textlength(tekst, font=font(13, "Bold")) + 14
+        d.rounded_rectangle((x0, 11, x0 + szer, 29), radius=9, fill=KOLORY["tekst"] if krytyczne else KOLORY["uwaga"])
+        d.text((x0 + szer / 2, 20), tekst, font=font(13, "Bold"), fill=KOLORY["alarm"] if krytyczne else KOLORY["tlo"], anchor="mm")
 
 
 def pasek(d, x, y, szer, wys, procent, kolor):
@@ -184,7 +226,7 @@ def ekran_dyski(t, dane):
     aktywne = sum(1 for x in dane["dyski"] if x[3])
     d.text((M, 222), f"{aktywne} {t['aktywne']} · {len(dane['dyski']) - aktywne} {t['uspione']}",
            font=font(13), fill=KOLORY["szary"])
-    for i, (nazwa, temp, smart, aktywny) in enumerate(dane["dyski"]):
+    for i, (nazwa, temp, smart, aktywny) in enumerate(problemy_na_gorze(dane["dyski"], 2, dane)):
         y = 240 + i * 36
         d.line((M, y + 34, W - M, y + 34), fill=KOLORY["linia"])
         d.ellipse((M + 2, y + 11, M + 14, y + 23), fill=KOLORY[smart] if aktywny else KOLORY["linia"])
@@ -207,7 +249,7 @@ def ekran_docker(t, dane):
     d.text((M + 14, 84), str(dz), font=font(44, "Bold"), fill=KOLORY["ok"])
     d.text((M + 86, 106), f"/ {wsz} {t['dzialaja']}", font=font(16, "SemiBold"), fill=KOLORY["szary"])
     d.text((W - 2 * M, 106), f"{wsz - dz} {t['zatrzymane']}", font=font(14, "SemiBold"), fill=KOLORY["uwaga"], anchor="ra")
-    for i, (nazwa, stan, cpu, ram) in enumerate(dane["kontenery"]):
+    for i, (nazwa, stan, cpu, ram) in enumerate(problemy_na_gorze(dane["kontenery"], 1, dane)):
         y = 150 + i * 40
         d.line((M, y + 37, W - M, y + 37), fill=KOLORY["linia"])
         d.ellipse((M + 2, y + 12, M + 14, y + 24), fill=KOLORY[stan])
@@ -216,7 +258,7 @@ def ekran_docker(t, dane):
         d.text((W - M - 76, y + 18), f"{liczba(cpu, t['_j'])}%", font=font(14, "SemiBold"), fill=KOLORY["tekst"], anchor="rm")
     y = 392
     d.text((M, y), t["maszyny"], font=font(14), fill=KOLORY["szary"])
-    for i, (nazwa, stan) in enumerate(dane["vm"]):
+    for i, (nazwa, stan) in enumerate(problemy_na_gorze(dane["vm"], 1, dane)):
         yy = y + 24 + i * 26
         d.ellipse((M + 2, yy + 4, M + 12, yy + 14), fill=KOLORY[stan])
         d.text((M + 22, yy + 9), nazwa, font=font(15, "SemiBold"), fill=KOLORY["tekst"], anchor="lm")
@@ -242,18 +284,31 @@ def ekran_parity(t, dane):
 
 def ekran_alerty(t, dane, puste=False):
     img = Image.new("RGB", (W, H), KOLORY["tlo"]); d = ImageDraw.Draw(img)
-    naglowek(d, t["alerty"], 4, dane)
+    naglowek(d, t["alerty"], 4, dane if not puste else dict(dane, alerty=[]))
     if puste:
         d.ellipse((W // 2 - 50, 170, W // 2 + 50, 270), outline=KOLORY["ok"], width=8)
         d.line([(W // 2 - 24, 222), (W // 2 - 6, 240), (W // 2 + 26, 204)], fill=KOLORY["ok"], width=9)
         d.text((W // 2, 300), t["brak_alertow"], font=font(20, "SemiBold"), fill=KOLORY["tekst"], anchor="mm")
         return img
-    for i, (poziom, tytul, opis) in enumerate(dane["alerty"]):
-        y = 56 + i * 82
-        karta(d, M, y, W - 2 * M, 72)
-        d.rounded_rectangle((M, y, M + 8, y + 72), radius=4, fill=KOLORY[poziom])
-        d.text((M + 20, y + 14), tytul, font=font(19, "Bold"), fill=KOLORY[poziom])
-        d.text((M + 20, y + 44), opis, font=font(14), fill=KOLORY["szary"])
+    # Krytyczne zawsze na górze, potem ostrzeżenia; mieszczą się 4 karty.
+    alerty = sorted(dane["alerty"], key=lambda a: 0 if a[0] == "alarm" else 1)[:4]
+    krytyczne = any(a[0] == "alarm" for a in alerty)
+    y = 54
+    for poziom, tytul, opis in alerty:
+        wys = 86 if poziom == "alarm" else 72
+        if poziom == "alarm":
+            d.rounded_rectangle((M, y, W - M, y + wys), radius=10, fill=(64, 18, 22), outline=KOLORY["alarm"], width=2)
+            d.text((M + 14, y + 12), t["krytyczne"], font=font(11, "Bold"), fill=KOLORY["alarm"])
+            d.text((M + 14, y + 28), tytul, font=font(20, "Bold"), fill=KOLORY["tekst"])
+            d.text((M + 14, y + 58), opis, font=font(14), fill=(230, 180, 180))
+        else:
+            karta(d, M, y, W - 2 * M, wys)
+            d.rounded_rectangle((M, y, M + 8, y + wys), radius=4, fill=KOLORY[poziom])
+            d.text((M + 20, y + 14), tytul, font=font(19, "Bold"), fill=KOLORY[poziom])
+            d.text((M + 20, y + 44), opis, font=font(14), fill=KOLORY["szary"])
+        y += wys + 8
+    if krytyczne:
+        d.text((W // 2, H - M - 6), t["przypiety"], font=font(12, "SemiBold"), fill=KOLORY["szary"], anchor="mm")
     return img
 
 
@@ -263,4 +318,6 @@ def wszystkie(jezyk="pl", dane=None):
     t = dict(TEKSTY[jezyk], _j=jezyk)
     return {"1-system": ekran_system(t, dane), "2-dyski": ekran_dyski(t, dane), "3-docker": ekran_docker(t, dane),
             "4-parity": ekran_parity(t, dane), "5-alerty": ekran_alerty(t, dane),
-            "5b-alerty-puste": ekran_alerty(t, dane, True)}
+            "5b-alerty-puste": ekran_alerty(t, dane, True),
+            "5c-alerty-krytyczne": ekran_alerty(t, PRZYKLADOWE_DANE_KRYTYCZNE),
+            "1c-system-krytyczny": ekran_system(t, dict(PRZYKLADOWE_DANE_KRYTYCZNE, **{k: v for k, v in dane.items() if k != "alerty"}))}

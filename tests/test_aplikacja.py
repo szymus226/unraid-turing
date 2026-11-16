@@ -158,6 +158,13 @@ def test_temperatura_cpu_calego_procesora_nie_rdzenia(tmp_path: Path):
     assert temperatura_cpu(tmp_path) == 70.0  # bez etykiety: pierwszy numerycznie, nie temp10
 
 
+def test_problemy_na_gorze():
+    from app.ekrany.rysuj import problemy_na_gorze
+    lista = [("a", "ok"), ("b", "uwaga"), ("c", "ok"), ("d", "alarm")]
+    assert [x[0] for x in problemy_na_gorze(lista, 1, {})] == ["d", "b", "a", "c"]
+    assert [x[0] for x in problemy_na_gorze(lista, 1, {"sortuj_awarie": False})] == ["a", "b", "c", "d"]
+
+
 # --- różnice obrazu ---
 def test_brak_zmian_nic_nie_wysyla():
     a = Image.new("RGB", (320, 480))
