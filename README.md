@@ -29,6 +29,8 @@ i oprogramowania producenta. Ma panel WWW na porcie 8766.
 
 Alert krytyczny (np. dysk wyłączony z array) przypina ekran Alerty, ustawia jasność 100%
 (także w godzinach nocnych) i dodaje czerwoną ramkę. Każdą z tych reakcji wyłączysz w panelu.
+W sekcji „Alerty krytyczne” wybierzesz, które rodzaje alertów są krytyczne lub w ogóle widoczne,
+i wyciszysz aktywny alert do rozwiązania problemu (zostaje wtedy na ekranie Alerty jako zwykłe ostrzeżenie).
 
 ## Obsługiwany sprzęt
 
@@ -108,7 +110,9 @@ connects to the internet), Updates, Clock with Open-Meteo weather (off by defaul
 internet), Panel QR code (off by default).
 
 A critical alert (e.g. a disk disabled in the array) pins the Alerts screen, sets 100% brightness
-(also during night hours) and adds a red frame. Each of these can be turned off in the panel.
+(also during night hours) and adds a red frame. Each of these can be turned off in the panel. In the "Critical alerts" section
+you choose which alert types are critical or shown at all, and mute an active alert until it is resolved (it then
+stays on the Alerts screen as a normal warning).
 
 **Supported hardware:** Turing Smart Screen 3.5" (rev A) / UsbMonitor 3.5", USB `1a86:5722`.
 The display is detected automatically, also after unplugging and plugging it back in.

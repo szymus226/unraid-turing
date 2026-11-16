@@ -25,6 +25,9 @@ DOMYSLNE_PROGI = {
     "kontener_stop": [None, None, True], "dysk_awaria": [None, None, True],
 }
 
+# Rodzaje alertów krytycznych (te same nazwy w panelu): [na ekranie, krytyczny].
+RODZAJE_ALERTOW = ("dysk", "smart", "array", "parity", "prog", "unraid", "pulpit")
+
 MOTYWY = ("granatowy", "czarny", "jasny")
 MAKS_KONTENEROW = 6
 GODZINA = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -61,6 +64,7 @@ class Ustawienia:
     pogoda_miejsce: str = ""
     pogoda_lat: float | None = None
     pogoda_lon: float | None = None
+    rodzaje_alertow: dict = field(default_factory=lambda: {k: [True, True] for k in RODZAJE_ALERTOW})
 
     def popraw(self) -> "Ustawienia":
         """Przycina wartości do bezpiecznych zakresów i uzupełnia brakujące elementy."""
@@ -98,6 +102,7 @@ class Ustawienia:
             except (TypeError, ValueError):
                 v = None
             setattr(self, nazwa, v if v is not None and -granica <= v <= granica else None)
+        self.rodzaje_alertow = _popraw_rodzaje(self.rodzaje_alertow)
         return self
 
     @property
@@ -120,6 +125,17 @@ def _popraw_ekrany(ekrany) -> list[dict]:
         ukryte = sorted({int(i) for i in e.get("ukryte", []) if isinstance(i, int) and 0 <= i < 20})
         wynik.append({"klucz": e["klucz"], "wl": bool(e.get("wl", True)), "czas_s": czas, "ukryte": ukryte})
     wynik += [domyslne[k] for k in KLUCZE_EKRANOW if k not in widziane]
+    return wynik
+
+
+def _popraw_rodzaje(rodzaje) -> dict:
+    wynik = {k: [True, True] for k in RODZAJE_ALERTOW}
+    if isinstance(rodzaje, dict):
+        for k in RODZAJE_ALERTOW:
+            v = rodzaje.get(k)
+            if isinstance(v, (list, tuple)) and len(v) == 2:
+                pokaz = bool(v[0])
+                wynik[k] = [pokaz, pokaz and bool(v[1])]
     return wynik
 
 

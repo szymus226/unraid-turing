@@ -5,6 +5,8 @@ a reszta działa dalej.
 """
 from __future__ import annotations
 
+import json
+import logging
 import os
 import threading
 import time
@@ -42,6 +44,7 @@ A = {
            "uruchomiony": "started", "zatrzymany": "stopped", "nieznany": "no data",
            "dzis": "today", "wczoraj": "yesterday", "dni": "days", "brak": "—", "nie_uzywany": "not used"},
 }
+log = logging.getLogger(__name__)
 TRWANIE_S = 30   # próg musi być przekroczony tyle sekund, zanim pojawi się alert (bez fałszywych skoków)
 
 
@@ -100,6 +103,17 @@ class AlertZewnetrzny:
     wygasa: float
 
 
+def rodzaj_alertu(id_: str) -> str:
+    """Rodzaj alertu krytycznego po jego identyfikatorze (te same rodzaje co w panelu)."""
+    if id_ == "zew:test-panelu":
+        return "test"
+    for przedrostek, rodzaj in (("dysk:", "dysk"), ("smart:", "smart"), ("array_stop", "array"),
+                                ("parity", "parity"), ("unraid:", "unraid"), ("zew:", "pulpit")):
+        if id_.startswith(przedrostek):
+            return rodzaj
+    return "prog"   # temperatura, CPU, RAM, SWAP, zajętość array
+
+
 @dataclass
 class Alert:
     id: str
@@ -107,6 +121,8 @@ class Alert:
     tytul: str
     opis: str
     przelacz: bool = False
+    rodzaj: str | None = None   # rodzaj alertu krytycznego (ustawienia „rodzaje_alertow”), None dla zwykłych
+    wyciszony: bool = False     # krytyczny wyciszony do rozwiązania: na ekranie jako zwykłe ostrzeżenie
 
     def krotka(self):
         return (self.poziom, self.tytul, self.opis)
@@ -158,6 +174,8 @@ class Zbieracz:
         self._od_kiedy: dict[str, float] = {}
         self._wolne: dict = {}          # wyniki wolnych odczytów (aktualizacje, powiadomienia, VM)
         self._wolne_czas = 0.0
+        self._plik_wyciszonych = katalog_konfiguracji / "wyciszone.json" if katalog_konfiguracji else None
+        self.wyciszone: set[str] = self._wczytaj_wyciszone()
         self.ostatnie = Odczyty()
         self.w_tle = w_tle
 
@@ -179,6 +197,27 @@ class Zbieracz:
     def usun_zewnetrzny(self, id_: str) -> bool:
         with self._blokada:
             return self.zewnetrzne.pop(id_, None) is not None
+
+    # --- wyciszanie alertów krytycznych (do rozwiązania problemu) ---
+    def _wczytaj_wyciszone(self) -> set[str]:
+        try:
+            dane = json.loads(self._plik_wyciszonych.read_text()) if self._plik_wyciszonych else []
+            return {str(x) for x in dane if isinstance(x, str)}
+        except (OSError, ValueError):
+            return set()
+
+    def _zapisz_wyciszone(self) -> None:
+        if not self._plik_wyciszonych:
+            return
+        try:
+            self._plik_wyciszonych.write_text(json.dumps(sorted(self.wyciszone)))
+        except OSError:
+            log.warning("nie mogę zapisać listy wyciszonych alertów")
+
+    def wycisz(self, id_: str, wyciszony: bool) -> None:
+        with self._blokada:
+            (self.wyciszone.add if wyciszony else self.wyciszone.discard)(id_)
+            self._zapisz_wyciszone()
 
     # --- odczyt ---
     def _wolne_odczyty(self) -> dict:
@@ -280,8 +319,34 @@ class Zbieracz:
                     del self.zewnetrzne[id_]
                     continue
                 wynik.append(Alert(f"zew:{id_}", z.poziom, z.tytul, z.opis, z.poziom == "alarm"))
+        wynik = self._zastosuj_rodzaje(wynik, u)
         # krytyczne pierwsze, potem ostrzeżenia
         wynik.sort(key=lambda a: 0 if a.poziom == "alarm" else 1)
+        return wynik
+
+    def _zastosuj_rodzaje(self, alerty: list[Alert], u: Ustawienia) -> list[Alert]:
+        """Rodzaje alertów z panelu: wyłączone znikają, niekrytyczne i wyciszone stają się zwykłym ostrzeżeniem."""
+        wynik, krytyczne_id = [], set()
+        for a in alerty:
+            if a.poziom != "alarm":
+                wynik.append(a)
+                continue
+            a.rodzaj = rodzaj_alertu(a.id)
+            pokaz, krytyczny = u.rodzaje_alertow.get(a.rodzaj, [True, True])
+            if not pokaz:
+                continue
+            if not krytyczny:
+                a.poziom, a.przelacz = "uwaga", False
+            else:
+                krytyczne_id.add(a.id)
+                if a.id in self.wyciszone:
+                    a.poziom, a.przelacz, a.wyciszony = "uwaga", False, True
+            wynik.append(a)
+        with self._blokada:
+            # wyciszenie trwa do rozwiązania: znika razem z alertem
+            if self.wyciszone - krytyczne_id:
+                self.wyciszone &= krytyczne_id
+                self._zapisz_wyciszone()
         return wynik
 
     # --- dane dla ekranów ---

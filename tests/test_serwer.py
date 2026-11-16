@@ -53,6 +53,11 @@ def test_alert_testowy(klient):
     assert "test-panelu" not in serwer.app.state.petla.zbieracz.zewnetrzne
 
 
+def test_wyciszenie(klient):
+    assert klient.post("/api/wyciszenie", json={"id": "dysk:disk2", "wyciszony": True}).json()["ok"]
+    assert "dysk:disk2" in serwer.app.state.petla.zbieracz.wyciszone
+
+
 def test_motyw_eksport_import(klient):
     klient.put("/api/ustawienia", json={"motyw": "jasny"})
     plik = klient.get("/api/motyw/eksport").json()

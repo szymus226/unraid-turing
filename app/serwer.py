@@ -35,7 +35,7 @@ WERSJA = "0.2.0"
 
 # Klucze ustawień zapisywane razem z motywem (eksport/import układu).
 KLUCZE_MOTYWU = ("motyw", "orientacja", "ekrany", "progi", "sortuj_awarie", "krytyczne_przypnij",
-                 "krytyczne_jasnosc", "krytyczne_ramka", "jezyk", "przelaczanie_s")
+                 "krytyczne_jasnosc", "krytyczne_ramka", "jezyk", "przelaczanie_s", "rodzaje_alertow")
 
 
 def utworz_petle() -> Petla:
@@ -137,7 +137,8 @@ def stan():
             "internet": z.siec.internet,
         },
         "aplikacja": app.state.zuzycie.odczyt(),
-        "alerty": [{"id": a.id, "poziom": a.poziom, "tytul": a.tytul, "opis": a.opis} for a in o.alerty],
+        "alerty": [{"id": a.id, "poziom": a.poziom, "tytul": a.tytul, "opis": a.opis, "rodzaj": a.rodzaj,
+                    "wyciszony": a.wyciszony} for a in o.alerty],
         "speedtest": {"trwa": z.speedtest.trwa, "blad": z.speedtest.blad, "nastepny": z.speedtest.nastepny},
         "pogoda": {"biezaca": z.pogoda.biezaca, "blad": z.pogoda.blad},
     }
@@ -264,6 +265,19 @@ def alert_testowy(jezyk: str = "pl"):
 @app.delete("/api/alert-testowy")
 def usun_alert_testowy():
     _petla().zbieracz.usun_zewnetrzny("test-panelu")
+    _petla()._zmiana.set()
+    return {"ok": True}
+
+
+class Wyciszenie(BaseModel):
+    id: str = Field(min_length=1, max_length=200)
+    wyciszony: bool
+
+
+@app.post("/api/wyciszenie")
+def wyciszenie(w: Wyciszenie):
+    """Wycisza alert krytyczny do rozwiązania problemu (zostaje na ekranie Alerty jako zwykły)."""
+    _petla().zbieracz.wycisz(w.id, w.wyciszony)
     _petla()._zmiana.set()
     return {"ok": True}
 

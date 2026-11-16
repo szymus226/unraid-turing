@@ -129,6 +129,28 @@ td.srodek,th.srodek{text-align:center}
 .baner-krytyczny{background:#3a1416;border:1px solid var(--alarm);color:var(--tekst);border-radius:8px;padding:10px 12px;margin:-4px 0 14px}
 .baner-krytyczny strong{color:var(--alarm);margin-right:6px}
 .btn:disabled{opacity:.4;cursor:default}
+.licznik-nav{margin-left:auto;background:var(--alarm);color:#fff;border-radius:9px;font-size:11px;font-weight:700;padding:0 7px;line-height:18px}
+.kr-pusty{display:flex;gap:12px;align-items:center;color:var(--szary);padding:6px 0}
+.kr-pusty .ok{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--ok-tlo);color:var(--ok);font-weight:700;flex:none}
+.kr-alert{display:grid;grid-template-columns:4px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--linia)}
+.kr-alert:last-child{border:0}
+.kr-alert .pas{align-self:stretch;border-radius:2px;background:var(--alarm)}
+.kr-alert.wyc .pas{background:var(--szary)}
+.kr-alert .tyt{font-weight:600}
+.kr-alert .op{font-size:12px;color:var(--szary)}
+.kr-alert .akcje{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.przelacznik{position:relative;display:inline-block;width:40px;height:22px;flex:none;vertical-align:middle}
+.przelacznik input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer;width:100%;height:100%;z-index:1}
+.przelacznik span{position:absolute;inset:0;border-radius:11px;background:var(--linia);transition:background .15s}
+.przelacznik span::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+.przelacznik input:checked+span{background:var(--akcent)}
+.przelacznik input:checked+span::after{transform:translateX(18px)}
+.przelacznik input:focus-visible+span{outline:2px solid var(--akcent);outline-offset:2px}
+.przelacznik input:disabled+span{opacity:.35}
+.przelacznik input:disabled{cursor:default}
+.kr-alert .akcje label.tekst{font-size:13px;color:var(--szary)}
+td .op{display:block;font-size:12px;color:var(--szary)}
+.link{background:none;border:0;padding:0;color:var(--akcent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 @media (max-width:760px){
   body{flex-direction:column}
   nav{width:auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--linia);padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));gap:4px;align-items:center}
@@ -147,6 +169,7 @@ td.srodek,th.srodek{text-align:center}
   <button class="poz" data-s="podglad"><span class="ik">▣</span><span data-t="Podgląd|Preview"></span></button>
   <button class="poz" data-s="ekrany"><span class="ik">▦</span><span data-t="Ekrany i układy|Screens & layouts"></span></button>
   <button class="poz" data-s="dane"><span class="ik">☷</span><span data-t="Dyski i kontenery|Disks & containers"></span></button>
+  <button class="poz" data-s="krytyczne"><span class="ik">◉</span><span data-t="Alerty krytyczne|Critical alerts"></span><span class="licznik-nav" id="licznik-nav" hidden></span></button>
   <button class="poz" data-s="alarmy"><span class="ik">⚠</span><span data-t="Progi alarmowe|Alert thresholds"></span></button>
   <button class="poz" data-s="urzadzenie"><span class="ik">⇄</span><span data-t="Urządzenie USB|USB device"></span></button>
   <button class="poz" data-s="motywy"><span class="ik">◐</span><span data-t="Motywy|Themes"></span></button>
@@ -173,7 +196,7 @@ td.srodek,th.srodek{text-align:center}
     <button class="btn ikona" id="nast" data-tip="Następny ekran|Next screen">▶</button>
     <button class="btn" id="alert-testowy" data-t="Test alertu krytycznego (60 s)|Critical alert test (60 s)"></button>
   </div>
-  <div class="baner-krytyczny" id="baner-krytyczny" hidden><strong data-t="Alert krytyczny|Critical alert"></strong> <span id="baner-tekst"></span></div>
+  <div class="baner-krytyczny" id="baner-krytyczny" hidden style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:220px"><strong data-t="Alert krytyczny|Critical alert"></strong> <span id="baner-tekst"></span></span><button class="btn" id="baner-wycisz" data-t="Wycisz do rozwiązania|Mute until resolved"></button><button class="btn" id="baner-zmien" data-t="Zmień w: Alerty krytyczne|Change in: Critical alerts"></button></div>
   <div class="siatka">
     <div>
       <div class="lcd-ramka"><img class="lcd" id="lcd-glowny" alt=""></div>
@@ -254,14 +277,22 @@ td.srodek,th.srodek{text-align:center}
   <div class="karta" style="max-width:820px"><div class="tabela"><table>
     <thead><tr><th data-t="Parametr|Metric"></th><th class="num"><span class="kropka" style="background:var(--uwaga)"></span> <span data-t="Ostrzeżenie|Warning"></span></th><th class="num"><span class="kropka" style="background:var(--alarm)"></span> <span data-t="Alarm|Alarm"></span></th><th class="srodek"><span data-t="Przełącz na Alerty|Jump to Alerts"></span><span class="pomoc" data-tip="Gdy próg zostanie przekroczony, ekran od razu pokaże widok Alerty.|When a threshold is crossed, the display jumps straight to the Alerts screen.">?</span></th></tr></thead>
     <tbody id="progi"></tbody></table></div></div>
-  <div class="karta" style="max-width:820px;margin-top:14px"><h3 data-t="Alerty krytyczne mają pierwszeństwo|Critical alerts take priority"></h3>
-    <div class="wiersz"><label class="et" for="kr-przypnij" data-t="Przypnij ekran Alerty, dopóki problem nie zniknie|Pin the Alerts screen until the problem is gone"></label><input type="checkbox" id="kr-przypnij" checked></div>
-    <div class="wiersz"><label class="et" for="kr-jasnosc" data-t="Włącz ekran z jasnością 100%, także gdy jest wyłączony na noc|Turn the display on at 100% brightness, even when it is off for the night"></label><input type="checkbox" id="kr-jasnosc" checked></div>
-    <div class="wiersz"><label class="et" for="kr-naglowek" data-t="Czerwony nagłówek i ramka na każdym ekranie|Red header and frame on every screen"></label><input type="checkbox" id="kr-naglowek" checked></div>
-    <div class="wiersz" style="align-items:flex-start"><span class="et" data-t="Krytyczne z serwera|Critical from the server"></span>
-      <span style="flex:2;min-width:220px" data-t="dysk wyłączony lub brakujący w array, błąd SMART, zatrzymany array, błędy parity, próg alarmowy temperatury, powiadomienie Unraida o poziomie „alert”|disk disabled or missing in the array, SMART failure, array stopped, parity errors, temperature alarm threshold, Unraid notification with level “alert”"></span></div>
-    <div class="wiersz" style="align-items:flex-start"><span class="et" data-t="Krytyczne z pulpitu homelabbera|Critical from the homelabber desktop"></span>
-      <span style="flex:2;min-width:220px"><span class="znacznik s" data-t="później|later"></span> <span data-t="lista ustawiana w pulpicie, np. awaria tunelu, DNS, zasilania|list set in the desktop, e.g. tunnel, DNS or power failure"></span></span></div>
+  <div class="karta" style="max-width:820px;margin-top:14px"><div class="wiersz"><span class="et" data-t="Które alerty są krytyczne, co robią na ekranie, wyciszanie|Which alerts are critical, what they do on the display, muting"></span><button class="btn" data-idz="krytyczne" data-t="Zmień w: Alerty krytyczne|Change in: Critical alerts"></button></div></div>
+</section>
+
+<!-- ALERTY KRYTYCZNE -->
+<section id="krytyczne" hidden>
+  <div class="pasek"><h2 data-t="Alerty krytyczne|Critical alerts"></h2>
+    <span class="niezapisane" id="niezap-krytyczne" hidden>● <span data-t="Niezapisane zmiany|Unsaved changes"></span></span>
+    <button class="btn glowny zapisz" data-grupa="krytyczne" disabled data-t="Zapisz|Save"></button></div>
+  <div class="karta" style="max-width:820px;margin-bottom:14px"><h3 data-t="Aktywne teraz|Active now"></h3>
+    <div id="kr-aktywne"></div></div>
+  <div class="karta" style="max-width:820px;margin-bottom:14px"><h3><span data-t="Rodzaje alertów|Alert types"></span><span class="pomoc" data-tip="Na ekranie: czy alert w ogóle pojawia się na LCD. Krytyczny: czy ma pierwszeństwo (działania poniżej). Wyłączony przełącznik „Krytyczny” zostawia alert na ekranie Alerty jako zwykłe ostrzeżenie.|On display: whether the alert shows on the LCD at all. Critical: whether it takes priority (actions below). With “Critical” off the alert stays on the Alerts screen as a normal warning.">?</span></h3>
+    <div class="tabela"><table><thead><tr><th data-t="Alert|Alert"></th><th data-t="Teraz|Now"></th><th class="srodek" data-t="Na ekranie|On display"></th><th class="srodek" data-t="Krytyczny|Critical"></th></tr></thead><tbody id="kr-rodzaje"></tbody></table></div></div>
+  <div class="karta" style="max-width:820px"><h3 data-t="Co robi alert krytyczny|What a critical alert does"></h3>
+    <div class="wiersz"><label class="et" for="kr-przypnij" data-t="Przypnij ekran Alerty, dopóki problem nie zniknie|Pin the Alerts screen until the problem is gone"></label><label class="przelacznik"><input type="checkbox" id="kr-przypnij" checked><span></span></label></div>
+    <div class="wiersz"><label class="et" for="kr-jasnosc" data-t="Włącz ekran z jasnością 100%, także gdy jest wyłączony na noc|Turn the display on at 100% brightness, even when it is off for the night"></label><label class="przelacznik"><input type="checkbox" id="kr-jasnosc" checked><span></span></label></div>
+    <div class="wiersz"><label class="et" for="kr-naglowek" data-t="Czerwony nagłówek i ramka na każdym ekranie|Red header and frame on every screen"></label><label class="przelacznik"><input type="checkbox" id="kr-naglowek" checked><span></span></label></div>
   </div>
 </section>
 
@@ -314,7 +345,6 @@ td.srodek,th.srodek{text-align:center}
     <div class="przyciski"><button class="btn" id="d-anuluj" data-t="Zostań|Stay"></button><button class="btn" id="d-odrzuc" data-t="Odrzuć|Discard"></button><button class="btn glowny" id="d-zapisz" data-t="Zapisz|Save"></button></div>
   </div>
 </div>
-
 <script>
 // Panel Unraid LCD: ten sam układ co zatwierdzona makieta, dane i zapis przez API aplikacji.
 'use strict';
@@ -332,7 +362,9 @@ let REJESTR = [];          // opis ekranów i ich elementów
 let ekranyRob = [];        // kopia robocza ekranów (do zapisu)
 let DYSKI = [], KONT = [], wybraneDyski = new Set(), wybraneKont = new Set();
 let wybranyEdytor = 0, sekcja = 'podglad', czekajacaSekcja = null, wersjaMiniatur = 0;
-const brudne = { ekrany: false, dane: false, alarmy: false };
+const brudne = { ekrany: false, dane: false, alarmy: false, krytyczne: false };
+let rodzajeRob = {};       // kopia robocza rodzajów alertów (do zapisu)
+let ostatnieAktywne = '';  // żeby nie przerysowywać listy, gdy nic się nie zmieniło
 
 const PROGI = [
   ['cpu_temp', 'Temperatura CPU|CPU temperature', '°C'], ['hdd_temp', 'Temperatura dysku HDD|HDD temperature', '°C'],
@@ -341,6 +373,20 @@ const PROGI = [
   ['kontener_stop', 'Zatrzymany wybrany kontener|Selected container stopped', '', 'always', null],
   ['dysk_awaria', 'Błąd SMART lub dysk wyłączony z array|SMART error or disabled disk', '', null, 'always'],
 ];
+// Rodzaje alertów krytycznych: te same klucze co RODZAJE_ALERTOW w aplikacji.
+const RODZAJE = [
+  ['dysk', 'Dysk poza array|Disk out of the array', 'dysk wyłączony, brakujący lub emulowany|disk disabled, missing or emulated'],
+  ['smart', 'Błąd SMART|SMART failure', 'test SMART nieudany|SMART test failed'],
+  ['array', 'Array zatrzymany|Array stopped', 'array nie działa|the array is not running'],
+  ['parity', 'Błędy parity|Parity errors', 'błędy w ostatniej kontroli parity|errors in the last parity check'],
+  ['prog', 'Próg alarmu|Alarm threshold', 'temperatura CPU i dysków, CPU, RAM, SWAP, zajętość array (wartości w „Progi alarmowe”)|CPU and disk temperature, CPU, RAM, swap, array usage (values in “Alert thresholds”)'],
+  ['unraid', 'Powiadomienie Unraida|Unraid notification', 'powiadomienia o poziomie „alert”|notifications with level “alert”'],
+  ['pulpit', 'Pulpit homelabbera|Homelabber desktop', 'np. tunel, DNS, zasilanie; lista ustawiana w pulpicie, gdy powstanie dodatek|e.g. tunnel, DNS, power; list set in the desktop once the add-on exists'],
+];
+const NAZWA_TESTU = 'Test alertu krytycznego|Critical alert test';
+const nazwaRodzaju = k => k === 'test' ? T(NAZWA_TESTU) : T((RODZAJE.find(r => r[0] === k) || [k, k])[1]);
+const przelacznik = (id, wl, etykieta, wylaczony) =>
+  `<label class="przelacznik" title="${esc(etykieta)}"><input type="checkbox" id="${id}" ${wl ? 'checked' : ''} ${wylaczony ? 'disabled' : ''} aria-label="${esc(etykieta)}"><span></span></label>`;
 const WARUNKI = {
   parity: 'tylko gdy trwa kontrola parity|only while parity check runs',
   speedtest: 'tylko gdy speedtest jest włączony w „Dyski i kontenery”|only when speed test is on in “Disks & containers”',
@@ -585,13 +631,72 @@ function rysujProgi() {
     const [u, a, przelacz] = U.progi[klucz] || [null, null, false];
     const tr = document.createElement('tr');
     const pole = (stale, v, n) => `<span class="wart">${stale === 'always' ? `<span class="tekst-wart">${T('zawsze|always')}</span>` : v == null ? '<span class="tekst-wart">—</span>' : `<input type="number" min="0" max="150" step="1" id="prog-${i}-${n}" value="${v}" aria-label="${esc(T(nazwa))}">`}<span class="jedn">${stale === 'always' || v == null ? '' : jedn}</span></span>`;
-    tr.innerHTML = `<td>${esc(T(nazwa))}</td><td class="num">${pole(stalyU, u, 'u')}</td><td class="num">${pole(stalyA, a, 'a')}</td><td class="srodek"><input type="checkbox" id="prog-${i}-s" ${przelacz ? 'checked' : ''} aria-label="${esc(T('Przełącz na Alerty|Jump to Alerts'))}"></td>`;
+    tr.innerHTML = `<td>${esc(T(nazwa))}</td><td class="num">${pole(stalyU, u, 'u')}</td><td class="num">${pole(stalyA, a, 'a')}</td><td class="srodek">${przelacznik(`prog-${i}-s`, przelacz, T('Przełącz na Alerty|Jump to Alerts'))}</td>`;
     tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => oznacz('alarmy')));
     $('progi').appendChild(tr);
   });
-  $('kr-przypnij').checked = U.krytyczne_przypnij;
-  $('kr-jasnosc').checked = U.krytyczne_jasnosc;
-  $('kr-naglowek').checked = U.krytyczne_ramka;
+}
+
+// --- alerty krytyczne ---
+// Aktywne alerty krytyczne: rodzaj włączony jako krytyczny (także wyciszone do rozwiązania).
+function aktywneKrytyczne() {
+  if (!S || !U) return [];
+  return S.alerty.filter(a => a.rodzaj && (a.rodzaj === 'test' || (U.rodzaje_alertow[a.rodzaj] || [true, true])[1]));
+}
+function rysujAktywne(wymus) {
+  const lista = aktywneKrytyczne();
+  const n = S ? S.alerty.filter(a => a.poziom === 'alarm').length : 0;
+  $('licznik-nav').hidden = !n; $('licznik-nav').textContent = n;
+  const klucz = JSON.stringify([J, lista]);
+  if (!wymus && klucz === ostatnieAktywne) return;
+  ostatnieAktywne = klucz;
+  if (!lista.length) {
+    $('kr-aktywne').innerHTML = `<div class="kr-pusty"><span class="ok">✓</span><span>${esc(T('Brak aktywnych alertów krytycznych. Ekran przełącza się normalnie.|No active critical alerts. The display rotates normally.'))}</span></div>`;
+    return;
+  }
+  $('kr-aktywne').innerHTML = '';
+  lista.forEach((a, i) => {
+    const d = document.createElement('div');
+    d.className = 'kr-alert' + (a.wyciszony ? ' wyc' : '');
+    const stan = a.wyciszony ? `<span class="znacznik s">${esc(T('wyciszony|muted'))}</span>` : `<span class="znacznik a">${esc(T('krytyczny|critical'))}</span>`;
+    const et = T('Wycisz do rozwiązania|Mute until resolved');
+    d.innerHTML = `<span class="pas"></span><div><div class="tyt">${esc(a.tytul)}</div><div class="op">${esc(nazwaRodzaju(a.rodzaj))}${a.opis ? ' · ' + esc(a.opis) : ''}</div></div>
+      <div class="akcje">${stan}<label class="tekst" for="wyc-${i}">${esc(et)}</label>${przelacznik('wyc-' + i, a.wyciszony, et)}</div>`;
+    d.querySelector('input').onchange = ev => wycisz([a.id], ev.target.checked);
+    $('kr-aktywne').appendChild(d);
+  });
+}
+async function wycisz(idki, wyciszony) {
+  try {
+    for (const id of idki) await api('/api/wyciszenie', { method: 'POST', body: JSON.stringify({ id, wyciszony }) });
+    toast(T(wyciszony ? 'Wyciszony do rozwiązania. Zostaje na ekranie Alerty jako zwykłe ostrzeżenie.|Muted until resolved. It stays on the Alerts screen as a normal warning.' : 'Wyciszenie cofnięte|Mute removed'));
+  } catch (e) { toast(e.message, true); }
+  setTimeout(odswiezStan, 600);
+}
+function rysujRodzaje() {
+  if (!U) return;
+  $('kr-rodzaje').innerHTML = '';
+  RODZAJE.forEach(([k, nazwa, opis], i) => {
+    const [pokaz, krytyczny] = rodzajeRob[k] || [true, true];
+    const aktywny = S && S.alerty.some(a => a.rodzaj === k);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${esc(T(nazwa))}<span class="op">${esc(T(opis))}</span></td><td>${aktywny ? `<span class="znacznik a">${esc(T('aktywny|active'))}</span>` : `<span class="znacznik">${esc(T('spokój|clear'))}</span>`}</td>`
+      + `<td class="srodek">${przelacznik('rodz-e-' + i, pokaz, T('Na ekranie|On display') + ': ' + T(nazwa))}</td><td class="srodek">${przelacznik('rodz-k-' + i, pokaz && krytyczny, T('Krytyczny|Critical') + ': ' + T(nazwa), !pokaz)}</td>`;
+    const [e, kr] = tr.querySelectorAll('input');
+    e.onchange = () => { rodzajeRob[k] = [e.checked, e.checked && (rodzajeRob[k] || [true, true])[1]]; oznacz('krytyczne'); rysujRodzaje(); };
+    kr.onchange = () => { rodzajeRob[k] = [true, kr.checked]; oznacz('krytyczne'); };
+    $('kr-rodzaje').appendChild(tr);
+  });
+}
+function rysujKrytyczne() {
+  if (!U) return;
+  if (!brudne.krytyczne) {
+    rodzajeRob = JSON.parse(JSON.stringify(U.rodzaje_alertow));
+    $('kr-przypnij').checked = U.krytyczne_przypnij;
+    $('kr-jasnosc').checked = U.krytyczne_jasnosc;
+    $('kr-naglowek').checked = U.krytyczne_ramka;
+  }
+  rysujAktywne(true); rysujRodzaje();
 }
 
 // --- urządzenie USB ---
@@ -651,10 +756,15 @@ async function odswiezStan() {
     $('blad-polaczenia').hidden = true;
   } catch (e) { $('blad-polaczenia').hidden = false; return; }
   rysujStan(); rysujPodglad(); rysujStanPogody(); odswiezObraz();
+  rysujAktywne(false);
+  if (sekcja === 'krytyczne' && !document.activeElement.closest('#kr-rodzaje')) {
+    const teraz = JSON.stringify(S.alerty.map(a => a.rodzaj));
+    if (teraz !== rysujRodzaje.ostatnie) { rysujRodzaje.ostatnie = teraz; rysujRodzaje(); }
+  }
 }
 function rysujWszystko() {
   rysujUstawieniaPodgladu(); rysujPodglad(); rysujStan(); if (sekcja === 'ekrany') rysujEdytor();
-  rysujDane(); rysujPomiary(); rysujProgi(); rysujLogi();
+  rysujDane(); rysujPomiary(); rysujProgi(); rysujKrytyczne(); rysujLogi();
 }
 
 // --- zapis grup ---
@@ -665,6 +775,7 @@ function odrzuc(g) {
   if (g === 'ekrany') { ekranyRob = JSON.parse(JSON.stringify(U.ekrany)); }
   if (g === 'dane') { wczytajDane(); }
   if (g === 'alarmy') { rysujProgi(); }
+  if (g === 'krytyczne') { rysujKrytyczne(); }
 }
 async function zapisz(g) {
   let zmiany = {};
@@ -696,13 +807,17 @@ async function zapisz(g) {
       const wartosc = (n, dom) => { const p = $(`prog-${i}-${n}`); return p && p.value !== '' ? +p.value : dom; };
       progi[klucz] = [wartosc('u', u), wartosc('a', a), $(`prog-${i}-s`).checked];
     });
-    zmiany = { progi, krytyczne_przypnij: $('kr-przypnij').checked, krytyczne_jasnosc: $('kr-jasnosc').checked, krytyczne_ramka: $('kr-naglowek').checked };
+    zmiany = { progi };
+  }
+  if (g === 'krytyczne') {
+    zmiany = { rodzaje_alertow: rodzajeRob, krytyczne_przypnij: $('kr-przypnij').checked, krytyczne_jasnosc: $('kr-jasnosc').checked, krytyczne_ramka: $('kr-naglowek').checked };
   }
   if (!(await ustaw(zmiany, 'Zapisano|Saved'))) return false;
   wyczysc(g);
   if (g === 'ekrany') ekranyRob = JSON.parse(JSON.stringify(U.ekrany));
   if (g === 'dane') { await wczytajDane(); }
   if (g === 'alarmy') rysujProgi();
+  if (g === 'krytyczne') rysujKrytyczne();
   return true;
 }
 function toast(t, blad) {
@@ -724,6 +839,7 @@ function pokaz(s) {
   if (s === 'dane' && !brudne.dane) wczytajDane();
   if (s === 'urzadzenie') wczytajUrzadzenia();
   if (s === 'logi') rysujLogi();
+  if (s === 'krytyczne') rysujKrytyczne();
   if (s === 'podglad') odswiezObraz();
 }
 $('d-anuluj').onclick = () => { $('dialog').hidden = true; czekajacaSekcja = null; };
@@ -809,7 +925,10 @@ $('speedtest').onchange = () => { $('speedtest-co').disabled = !$('speedtest').c
 $('speedtest-co').onchange = () => oznacz('dane');
 $('pogoda').onchange = () => { $('pogoda-miejsce').disabled = $('pogoda').value === '0'; oznacz('dane'); };
 $('pogoda-miejsce').oninput = () => oznacz('dane');
-['kr-przypnij', 'kr-jasnosc', 'kr-naglowek'].forEach(id => $(id).onchange = () => oznacz('alarmy'));
+['kr-przypnij', 'kr-jasnosc', 'kr-naglowek'].forEach(id => $(id).onchange = () => oznacz('krytyczne'));
+$('baner-wycisz').onclick = () => wycisz(S.alerty.filter(a => a.poziom === 'alarm').map(a => a.id), true);
+$('baner-zmien').onclick = () => pokaz('krytyczne');
+document.querySelectorAll('[data-idz]').forEach(b => b.onclick = () => pokaz(b.dataset.idz));
 window.addEventListener('hashchange', () => { const s = location.hash.slice(1); if ($(s) && s !== sekcja) pokaz(s); });
 
 // --- start ---

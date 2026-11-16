@@ -224,6 +224,33 @@ def test_alerty_z_serwera(host):
     assert o.alerty[0].poziom == "alarm"                      # krytyczne pierwsze
 
 
+def test_rodzaje_alertow_i_wyciszanie(host, tmp_path):
+    z = Zbieracz(host, katalog_konfiguracji=tmp_path, w_tle=False)
+    u = Ustawienia().popraw()
+    ids = {a.id: a for a in z.odczytaj(u).alerty}
+    assert ids["dysk:disk2"].rodzaj == "dysk" and ids["unraid:1.notify"].rodzaj == "unraid"
+    # wyłączony rodzaj znika, niekrytyczny zostaje jako zwykłe ostrzeżenie
+    u = Ustawienia(rodzaje_alertow={"dysk": [False, True], "unraid": [True, False]}).popraw()
+    ids = {a.id: a for a in z.odczytaj(u).alerty}
+    assert "dysk:disk2" not in ids
+    assert ids["unraid:1.notify"].poziom == "uwaga" and not ids["unraid:1.notify"].przelacz
+    # wyciszony do rozwiązania: zwykłe ostrzeżenie, zapisany na dysku, znika razem z problemem
+    u = Ustawienia().popraw()
+    z.wycisz("dysk:disk2", True)
+    a = {a.id: a for a in z.odczytaj(u).alerty}["dysk:disk2"]
+    assert a.poziom == "uwaga" and a.wyciszony
+    assert "dysk:disk2" in Zbieracz(host, katalog_konfiguracji=tmp_path, w_tle=False).wyciszone
+    z.wycisz("nieistniejacy", True)
+    z.odczytaj(u)
+    assert z.wyciszone == {"dysk:disk2"}
+
+
+def test_rodzaje_alertow_w_ustawieniach():
+    u = Ustawienia(rodzaje_alertow={"dysk": [False, True], "obcy": [1, 1], "smart": "zle"}).popraw()
+    assert u.rodzaje_alertow["dysk"] == [False, False] and u.rodzaje_alertow["smart"] == [True, True]
+    assert "obcy" not in u.rodzaje_alertow
+
+
 def test_prog_musi_trwac(host):
     z = Zbieracz(host, w_tle=False)
     u = Ustawienia().popraw()
