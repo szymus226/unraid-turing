@@ -103,6 +103,13 @@ def licznik_alertow(dane):
     return (sum(1 for a in alerty if a[0] == "alarm"), sum(1 for a in alerty if a[0] == "uwaga"))
 
 
+def obramowanie(img, dane):
+    """Przy alercie krytycznym czerwona ramka dookoła całego ekranu (6 px, mieści się w marginesie)."""
+    if licznik_alertow(dane)[0]:
+        ImageDraw.Draw(img).rectangle((0, 0, W - 1, H - 1), outline=KOLORY["alarm"], width=6)
+    return img
+
+
 def naglowek(d, tytul, indeks, dane):
     krytyczne, ostrzezenia = licznik_alertow(dane)
     # Alert krytyczny barwi nagłówek każdego ekranu na czerwono.
@@ -210,7 +217,7 @@ def ekran_system(t, dane):
     for dy, znak, wartosc, kolor in ((24, "↓", dane["rx"], KOLORY["ok"]), (40, "↑", dane["tx"], KOLORY["akcent"])):
         d.text((x, y + dy), znak, font=font(13, "SemiBold"), fill=kolor)
         d.text((W - M - 10, y + dy), wartosc, font=font(13, "SemiBold"), fill=kolor, anchor="ra")
-    return img
+    return obramowanie(img, dane)
 
 
 def ekran_dyski(t, dane):
@@ -239,7 +246,7 @@ def ekran_dyski(t, dane):
         if aktywny:
             d.text((W - M - 78, y + 17), "SMART", font=font(11, "SemiBold"),
                fill=KOLORY[smart] if smart != "ok" else KOLORY["szary"], anchor="rm")
-    return img
+    return obramowanie(img, dane)
 
 
 def ekran_docker(t, dane):
@@ -264,7 +271,7 @@ def ekran_docker(t, dane):
         yy = y + 24 + i * 26
         d.ellipse((M + 2, yy + 4, M + 12, yy + 14), fill=KOLORY[stan])
         d.text((M + 22, yy + 9), nazwa, font=font(15, "SemiBold"), fill=KOLORY["tekst"], anchor="lm")
-    return img
+    return obramowanie(img, dane)
 
 
 def ekran_parity(t, dane):
@@ -281,7 +288,7 @@ def ekran_parity(t, dane):
         karta(d, M, y, W - 2 * M, 44)
         d.text((M + 14, y + 22), etyk, font=font(15), fill=KOLORY["szary"], anchor="lm")
         d.text((W - M - 14, y + 22), wart, font=font(22, "Bold"), fill=kol, anchor="rm")
-    return img
+    return obramowanie(img, dane)
 
 
 def ekran_alerty(t, dane, puste=False):
@@ -291,7 +298,7 @@ def ekran_alerty(t, dane, puste=False):
         d.ellipse((W // 2 - 50, 170, W // 2 + 50, 270), outline=KOLORY["ok"], width=8)
         d.line([(W // 2 - 24, 222), (W // 2 - 6, 240), (W // 2 + 26, 204)], fill=KOLORY["ok"], width=9)
         d.text((W // 2, 300), t["brak_alertow"], font=font(20, "SemiBold"), fill=KOLORY["tekst"], anchor="mm")
-        return img
+        return img  # pusty stan: brak alertów, więc bez ramki
     # Krytyczne zawsze na górze, potem ostrzeżenia; mieszczą się 4 karty.
     alerty = sorted(dane["alerty"], key=lambda a: 0 if a[0] == "alarm" else 1)[:4]
     krytyczne = any(a[0] == "alarm" for a in alerty)
@@ -311,7 +318,7 @@ def ekran_alerty(t, dane, puste=False):
         y += wys + 8
     if krytyczne:
         d.text((W // 2, H - M - 6), t["przypiety"], font=font(12, "SemiBold"), fill=KOLORY["szary"], anchor="mm")
-    return img
+    return obramowanie(img, dane)
 
 
 def wszystkie(jezyk="pl", dane=None):
