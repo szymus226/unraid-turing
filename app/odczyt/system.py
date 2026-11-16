@@ -93,9 +93,12 @@ def temperatura_cpu(katalog_sys: Path) -> float | None:
             continue
         if nazwa not in ("coretemp", "k10temp", "zenpower", "cpu_thermal"):
             continue
-        # Preferujemy "Package id 0" (Intel) albo "Tctl"/"Tdie" (AMD), inaczej pierwszy odczyt.
+        # Preferujemy temperaturę całego procesora: "Package id 0" lub "CPU Temp" (Intel, zależnie
+        # od jądra), "Tdie"/"Tctl" (AMD). Inaczej pierwszy odczyt, a nie temperatura pojedynczego rdzenia.
         odczyty = []
-        for plik in sorted(czujnik.glob("temp*_input")):
+        # Sortowanie numeryczne: temp2 przed temp10 (sortowanie tekstowe dałoby temp10 pierwsze).
+        pliki = sorted(czujnik.glob("temp*_input"), key=lambda p: int(p.name[4:].split("_")[0] or 0))
+        for plik in pliki:
             etykieta_plik = czujnik / plik.name.replace("_input", "_label")
             etykieta = _czytaj(etykieta_plik).strip() if etykieta_plik.exists() else ""
             try:
@@ -103,7 +106,7 @@ def temperatura_cpu(katalog_sys: Path) -> float | None:
             except (OSError, ValueError):
                 continue
             odczyty.append((etykieta, wartosc))
-        for preferowana in ("Package id 0", "Tdie", "Tctl"):
+        for preferowana in ("Package id 0", "CPU Temp", "Tdie", "Tctl"):
             for etykieta, wartosc in odczyty:
                 if etykieta == preferowana:
                     return wartosc

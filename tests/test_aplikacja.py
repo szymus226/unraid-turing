@@ -145,6 +145,19 @@ def test_czytnik_systemu(tmp_path: Path):
     assert stan.load == (1.42, 1.18, 0.97)
 
 
+def test_temperatura_cpu_calego_procesora_nie_rdzenia(tmp_path: Path):
+    from app.odczyt.system import temperatura_cpu
+    hw = tmp_path / "class" / "hwmon" / "hwmon1"
+    hw.mkdir(parents=True)
+    (hw / "name").write_text("coretemp\n")
+    for nr, etykieta, wartosc in ((1, "CPU Temp", 70000), (2, "Core 0", 67000), (10, "Core 8", 85000)):
+        (hw / f"temp{nr}_input").write_text(f"{wartosc}\n")
+        (hw / f"temp{nr}_label").write_text(etykieta + "\n")
+    assert temperatura_cpu(tmp_path) == 70.0
+    (hw / "temp1_label").write_text("cokolwiek\n")
+    assert temperatura_cpu(tmp_path) == 70.0  # bez etykiety: pierwszy numerycznie, nie temp10
+
+
 # --- różnice obrazu ---
 def test_brak_zmian_nic_nie_wysyla():
     a = Image.new("RGB", (320, 480))
