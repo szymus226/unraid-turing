@@ -4,7 +4,7 @@
 
 Aplikacja w kontenerze Docker, która pokazuje stan serwera Unraid na małym ekranie USB
 Turing Smart Screen / TURZX 3,5" (320×480). Działa lokalnie, bez Windows, AIDA64
-i oprogramowania producenta. Ma panel WWW na porcie 8765.
+i oprogramowania producenta. Ma panel WWW na porcie 8766.
 
 > Stan: wczesny prototyp (etap 2). Działa ekran „System” (CPU, rdzenie, temperatura,
 > RAM, SWAP, czas pracy, obciążenie, sieć) i tryb symulacji. Dane Unraida (array, dyski,
@@ -25,7 +25,7 @@ Ekran jest wykrywany automatycznie, także po odłączeniu i ponownym podłącze
 1. Skopiuj repozytorium na serwer i zbuduj obraz: `docker compose build`
    (gotowy obraz w rejestrze pojawi się przy pierwszym wydaniu).
 2. Uruchom: `docker compose up -d`. Konfiguracja trafia do `/mnt/user/appdata/unraid-lcd/`.
-3. Otwórz panel: `http://<adres-serwera>:8765`.
+3. Otwórz panel: `http://<adres-serwera>:8766` (port zmienisz w `docker-compose.yml`).
 
 ### Bezpieczeństwo
 
@@ -46,7 +46,7 @@ Czcionka Inter (SIL OFL 1.1) jest instalowana z pakietu `fonts-inter`.
 ## English
 
 A Docker app that shows Unraid server status on the small Turing Smart Screen / TURZX 3.5"
-USB display (320×480). Runs fully locally, no Windows, AIDA64 or vendor software. Web panel on port 8765.
+USB display (320×480). Runs fully locally, no Windows, AIDA64 or vendor software. Web panel on port 8766.
 
 > Status: early prototype (stage 2). The "System" screen (CPU, cores, temperature, RAM, swap,
 > uptime, load, network) and simulation mode work. Unraid data (array, disks, parity, Docker, VMs),
@@ -56,7 +56,7 @@ USB display (320×480). Runs fully locally, no Windows, AIDA64 or vendor softwar
 The display is detected automatically, also after unplugging and plugging it back in.
 
 **Install on Unraid:** `docker compose build`, then `docker compose up -d`; config lives in
-`/mnt/user/appdata/unraid-lcd/`; open `http://<server-address>:8765`.
+`/mnt/user/appdata/unraid-lcd/`; open `http://<server-address>:8766`.
 
 **Security:** not privileged, all capabilities dropped; host `/dev` is read-only and the cgroup rule
 only allows USB ACM serial ports; host `/proc` is read-only. The panel has no login: **keep it on your

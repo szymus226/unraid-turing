@@ -8,7 +8,7 @@ services:
     container_name: unraid-lcd
     restart: unless-stopped
     ports:
-      - "8765:8765"            # panel WWW tylko w sieci domowej / web panel, home network only
+      - "8766:8765"            # panel WWW tylko w sieci domowej (8765 bywa zajęty) / web panel, home network only
     volumes:
       - /mnt/user/appdata/unraid-lcd:/config
       - /dev:/dev-host:ro
