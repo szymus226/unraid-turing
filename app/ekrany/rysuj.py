@@ -99,6 +99,17 @@ def luk(d, cx, cy, r, procent, kolor, grubosc=14):
         d.arc((cx - r, cy - r, cx + r, cy + r), 135, 135 + 270 * procent / 100, fill=kolor, width=grubosc)
 
 
+def tekst_w_kole(d, cx, cy, tekst, max_szer, rozmiar, kolor):
+    """Rysuje liczbę wyśrodkowaną optycznie (po obrysie znaków) i zmniejsza czcionkę, gdy się nie mieści."""
+    while rozmiar > 12:
+        f = font(rozmiar, "Bold")
+        x0, y0, x1, y1 = d.textbbox((0, 0), tekst, font=f, anchor="ls")
+        if x1 - x0 <= max_szer:
+            break
+        rozmiar -= 2
+    d.text((cx - (x0 + x1) / 2, cy - (y0 + y1) / 2), tekst, font=f, fill=kolor, anchor="ls")
+
+
 def karta(d, x, y, szer, wys):
     d.rounded_rectangle((x, y, x + szer, y + wys), radius=10, fill=KOLORY["karta"])
 
@@ -108,7 +119,8 @@ def ekran_system(t, dane):
     naglowek(d, t["system"], 0, dane)
     # duży wskaźnik CPU
     luk(d, M + 74, 120, 60, dane["cpu"], kolor_progu(dane["cpu"], 70, 90))
-    d.text((M + 74, 114), f"{dane['cpu']:.0f}%", font=font(32, "Bold"), fill=KOLORY["tekst"], anchor="mm")
+    # wnętrze łuku: promień 60 minus grubość 14 daje 92 px średnicy; zostawiamy odstęp od łuku
+    tekst_w_kole(d, M + 74, 114, f"{dane['cpu']:.0f}%", 70, 30, KOLORY["tekst"])
     d.text((M + 74, 146), t["cpu"], font=font(14, "SemiBold"), fill=KOLORY["szary"], anchor="mm")
     # temperatura CPU i czas pracy
     temp = dane["cpu_temp"]
@@ -216,7 +228,7 @@ def ekran_parity(t, dane):
     naglowek(d, t["parity"], 3, dane)
     p = dane["parity_postep"]
     luk(d, W // 2, 180, 100, p, KOLORY["akcent2"], grubosc=18)
-    d.text((W // 2, 170), f"{liczba(p, t['_j'])}%", font=font(46, "Bold"), fill=KOLORY["tekst"], anchor="mm")
+    tekst_w_kole(d, W // 2, 172, f"{liczba(p, t['_j'])}%", 140, 44, KOLORY["tekst"])
     d.text((W // 2, 214), t["postep"], font=font(15, "SemiBold"), fill=KOLORY["szary"], anchor="mm")
     for i, (etyk, wart, kol) in enumerate([(t["predkosc"], dane["parity_predkosc"], KOLORY["tekst"]),
                                             (t["koniec"], dane["parity_eta"], KOLORY["tekst"]),
