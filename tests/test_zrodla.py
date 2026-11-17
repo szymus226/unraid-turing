@@ -287,6 +287,23 @@ def test_aktualizacje_z_pulpitu_zastepuja_licznik_unraida(host):
     assert z.aktualizacje_z_pulpitu() is None
 
 
+def test_ekrany_z_pulpitu_tylko_ze_swiezymi_kartami(host):
+    from app.ekrany import rejestr
+    z = Zbieracz(host, w_tle=False)
+    u = Ustawienia().popraw()
+    opis = rejestr.EKRANY["pulpit_zasilanie"]
+    assert not rejestr.spelnia_warunek(opis, z.dane(z.odczytaj(u), u))
+    z.ustaw_ekrany_pulpitu({"pulpit_zasilanie": [{"etykieta": "Bateria", "wartosc": "100%"}, None, {"etykieta": "X", "wartosc": "Y", "stan": "alarm"}]})
+    dane = z.dane(z.odczytaj(u), u)
+    assert rejestr.spelnia_warunek(opis, dane)
+    for poziomo in (False, True):
+        assert rejestr.narysuj("pulpit_zasilanie", dane, "pl", poziomo, ukryte=[2]).size == ((480, 320) if poziomo else (320, 480))
+    assert z.ekrany_z_pulpitu(teraz=time.time() + 121) == {}
+    # Nowe ekrany są w ustawieniach na końcu listy, domyślnie wyłączone.
+    assert [e["klucz"] for e in u.ekrany][-5:] == ["pulpit_zasilanie", "pulpit_pobieranie", "pulpit_odtwarzanie", "pulpit_kopie", "pulpit_kamery"]
+    assert not any(e["wl"] for e in u.ekrany[-5:])
+
+
 @pytest.mark.parametrize("poziomo", [False, True])
 @pytest.mark.parametrize("jezyk", ["pl", "en"])
 def test_wszystkie_ekrany_z_prawdziwych_danych(host, jezyk, poziomo):
@@ -374,7 +391,7 @@ def test_ustawienia_ekranow_naprawiane():
                                {"klucz": "nieznany"}, {"klucz": "zegar"}], "kontenery": [str(i) for i in range(9)],
                     "progi": {"ram": [95, 90, True]}, "speedtest_co_h": 5})
     assert u.ekrany[0] == {"klucz": "zegar", "wl": True, "czas_s": 3, "ukryte": [1]}
-    assert len(u.ekrany) == 12 and len(u.kontenery) == 6
+    assert len(u.ekrany) == 17 and len(u.kontenery) == 6
     assert u.progi["ram"] == [90, 95, True] and u.speedtest_co_h == 0
 
 

@@ -15,6 +15,9 @@ DOMYSLNE_EKRANY = [
     ("system", True, 10), ("dyski", True, 10), ("docker", True, 10), ("parity", True, 15),
     ("alerty", True, 10), ("ruch", True, 10), ("historia", True, 15), ("siec", True, 10),
     ("speedtest", False, 10), ("aktualizacje", True, 10), ("zegar", True, 10), ("qr", False, 10),
+    # Ekrany z pulpitu homelabbera (E3): włącza je pulpit, pokazują się tylko ze świeżymi danymi.
+    ("pulpit_zasilanie", False, 8), ("pulpit_pobieranie", False, 8), ("pulpit_odtwarzanie", False, 8),
+    ("pulpit_kopie", False, 8), ("pulpit_kamery", False, 8),
 ]
 KLUCZE_EKRANOW = [k for k, _, _ in DOMYSLNE_EKRANY]
 

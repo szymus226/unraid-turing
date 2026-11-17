@@ -50,6 +50,8 @@ TRWANIE_S = 30   # próg musi być przekroczony tyle sekund, zanim pojawi się a
 
 # Liczby aktualizacji z pulpitu są ważne 15 min (pulpit wysyła je co minutę).
 AKTUALIZACJE_PULPITU_S = 15 * 60
+# Karty ekranów z pulpitu są ważne 2 min (pulpit wysyła je co 30 s); starsze: ekran wypada z przełączania.
+EKRANY_PULPITU_S = 120
 
 
 def _liczba(v: float, jezyk: str, miejsca: int = 1) -> str:
@@ -176,6 +178,8 @@ class Zbieracz:
         self.zewnetrzne: dict[str, AlertZewnetrzny] = {}
         # Liczby aktualizacji z pulpitu homelabbera (dodatek „Smart ekran”) i czas ich nadejścia.
         self.aktualizacje_pulpitu: dict | None = None
+        # Karty ekranów z pulpitu: klucz → (karty, czas nadejścia).
+        self.ekrany_pulpitu: dict[str, tuple[list, float]] = {}
         self._aktualizacje_pulpitu_czas = 0.0
         self._blokada = threading.Lock()
         self._od_kiedy: dict[str, float] = {}
@@ -204,6 +208,17 @@ class Zbieracz:
     def usun_zewnetrzny(self, id_: str) -> bool:
         with self._blokada:
             return self.zewnetrzne.pop(id_, None) is not None
+
+    # --- ekrany z pulpitu ---
+    def ustaw_ekrany_pulpitu(self, ekrany: dict[str, list] | None) -> None:
+        """Zastępuje karty wszystkich ekranów z pulpitu (`None` = pulpit wyłączył ekrany)."""
+        with self._blokada:
+            teraz = time.time()
+            self.ekrany_pulpitu = {k: (v, teraz) for k, v in (ekrany or {}).items()}
+
+    def ekrany_z_pulpitu(self, teraz: float | None = None) -> dict[str, list]:
+        teraz = time.time() if teraz is None else teraz
+        return {k: v for k, (v, czas) in self.ekrany_pulpitu.items() if teraz - czas <= EKRANY_PULPITU_S}
 
     # --- liczby aktualizacji z pulpitu ---
     def ustaw_aktualizacje_pulpitu(self, liczby: dict | None) -> None:
@@ -467,6 +482,7 @@ class Zbieracz:
             "restart": czas_pracy(s.uptime_s),
         }
         # zegar
+        d["pulpit"] = self.ekrany_z_pulpitu()
         d["zegar"] = {"godzina": d["godzina"], "dzien_tyg": lok.tm_wday, "dzien": lok.tm_mday, "miesiac": lok.tm_mon,
                       "pogoda": self.pogoda.biezaca}
         return d
