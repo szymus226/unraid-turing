@@ -57,6 +57,18 @@ EKRANY_PULPITU: dict[str, tuple[str, str, list[tuple[str, str]], list[dict]]] = 
         ("Nagrywanie|Recording", "Stan i miejsce|State and space")],
      [{"etykieta": "Zdarzenia dziś", "wartosc": "12 · 9 osób · 3 auta"}, {"etykieta": "Ostatnie", "wartosc": "Wejście · 19:42"},
       {"etykieta": "Kamery", "wartosc": "4 z 4 działają"}, {"etykieta": "Nagrywanie", "wartosc": "włączone · 41% dysku", "pasek": 41}]),
+    "pulpit_polaczenia": ("POŁĄCZENIA|CONNECTIONS", "Połączenia|Connections", [
+        ("Internet|Internet", "Czy serwer ma internet, opóźnienie|Whether the server is online, latency"),
+        ("VPN|VPN", "Tunel gluetun i usługi przez VPN|gluetun tunnel and services via VPN"),
+        ("Tailscale|Tailscale", "Urządzenia online|Devices online"),
+        ("Wystawione do internetu|Exposed to the internet", "Adresy i ile jest publicznych|Addresses and how many are public"),
+        ("Bluetooth|Bluetooth", "Połączone urządzenia|Connected devices"),
+        ("Wysyłanie|Casting", "Co gra na ekranach|What plays on screens")],
+     [{"etykieta": "Internet", "wartosc": "działa · 14 ms", "prawa": "940 / 38 Mb/s"}, {"etykieta": "VPN · gluetun", "wartosc": "Zurych · 4 usługi"},
+      {"etykieta": "Tailscale", "wartosc": "2 z 5 urządzeń online"},
+      {"etykieta": "Wystawione do internetu", "wartosc": "3 adresy", "prawa": "1 publicznie", "stan": "uwaga"},
+      {"etykieta": "Bluetooth", "wartosc": "Słuchawki, Głośnik", "prawa": "2 połączone"},
+      {"etykieta": "Wysyłanie · Telewizor", "wartosc": "gra", "pasek": 13, "prawa": "gra"}]),
 }
 KLUCZE_PULPITU = list(EKRANY_PULPITU)
 

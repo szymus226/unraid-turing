@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-ARG WERSJA=0.4.0
+ARG WERSJA=0.5.0
 
 # Czcionka Inter (licencja OFL) do rysowania ekranów.
 RUN apt-get update \

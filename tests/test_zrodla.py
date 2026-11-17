@@ -300,8 +300,46 @@ def test_ekrany_z_pulpitu_tylko_ze_swiezymi_kartami(host):
         assert rejestr.narysuj("pulpit_zasilanie", dane, "pl", poziomo, ukryte=[2]).size == ((480, 320) if poziomo else (320, 480))
     assert z.ekrany_z_pulpitu(teraz=time.time() + 121) == {}
     # Nowe ekrany są w ustawieniach na końcu listy, domyślnie wyłączone.
-    assert [e["klucz"] for e in u.ekrany][-5:] == ["pulpit_zasilanie", "pulpit_pobieranie", "pulpit_odtwarzanie", "pulpit_kopie", "pulpit_kamery"]
-    assert not any(e["wl"] for e in u.ekrany[-5:])
+    assert [e["klucz"] for e in u.ekrany][-6:] == ["pulpit_zasilanie", "pulpit_pobieranie", "pulpit_odtwarzanie", "pulpit_kopie", "pulpit_kamery", "pulpit_polaczenia"]
+    assert not any(e["wl"] for e in u.ekrany[-6:])
+
+
+def test_ikony_polaczen_w_naglowku(host):
+    from app.ekrany import rejestr
+    z = Zbieracz(host, w_tle=False)
+    u = Ustawienia().popraw()
+    assert u.naglowek_polaczenia is True
+    assert z.dane(z.odczytaj(u), u)["_polaczenia"] is None
+    bez = rejestr.narysuj("system", z.dane(z.odczytaj(u), u), "pl", False)
+    ikony = [{"rodzaj": "internet", "stan": "alarm"}, {"rodzaj": "vpn", "stan": "ok"}, {"rodzaj": "tunel", "stan": "uwaga"},
+             {"rodzaj": "bt", "stan": "ok", "liczba": 2}, {"rodzaj": "cast", "stan": "gra"}]
+    z.ustaw_polaczenia_pulpitu(ikony)
+    dane = z.dane(z.odczytaj(u), u)
+    assert dane["_polaczenia"] == ikony
+    for poziomo in (False, True):
+        img = rejestr.narysuj("system", dane, "pl", poziomo)
+        assert img.size == ((480, 320) if poziomo else (320, 480))
+    # Nagłówek z ikonami różni się od nagłówka bez nich, reszta ekranu nie.
+    z_ikonami = rejestr.narysuj("system", dane, "pl", False)
+    assert z_ikonami.crop((0, 0, 320, 41)).tobytes() != bez.crop((0, 0, 320, 41)).tobytes()
+    # Wyłączone w ustawieniach albo stare (ponad 2 min): nagłówek bez ikon.
+    u.naglowek_polaczenia = False
+    assert z.dane(z.odczytaj(u), u)["_polaczenia"] is None
+    assert z.polaczenia_z_pulpitu(teraz=time.time() + 121) is None
+    z.ustaw_polaczenia_pulpitu(None)
+    assert z.polaczenia_z_pulpitu() is None
+
+
+def test_naglowek_z_ikonami_przy_dlugim_tytule_nie_nachodzi():
+    from PIL import Image, ImageDraw
+    from app.ekrany import rysuj
+    ikony = [{"rodzaj": r, "stan": "ok"} for r in ("internet", "vpn", "tunel", "bt", "cast")]
+    img = Image.new("RGB", (320, 480)); d = ImageDraw.Draw(img)
+    for tytul in ("SYSTEM", "POŁĄCZENIA", "WYSTAWIONE DO INTERNETU"):
+        koniec = rysuj.M + d.textlength(tytul, font=rysuj.font(18, "Bold"))
+        # Ikony nigdy nie wchodzą na tytuł: te, które się nie mieszczą, są pomijane.
+        assert rysuj.ikony_polaczen(d, 250, ikony, False, koniec + 8) >= min(250, koniec + 8)
+    assert rysuj.ikony_polaczen(d, 250, ikony, False, 40) == 150
 
 
 @pytest.mark.parametrize("poziomo", [False, True])
@@ -391,7 +429,7 @@ def test_ustawienia_ekranow_naprawiane():
                                {"klucz": "nieznany"}, {"klucz": "zegar"}], "kontenery": [str(i) for i in range(9)],
                     "progi": {"ram": [95, 90, True]}, "speedtest_co_h": 5})
     assert u.ekrany[0] == {"klucz": "zegar", "wl": True, "czas_s": 3, "ukryte": [1]}
-    assert len(u.ekrany) == 17 and len(u.kontenery) == 6
+    assert len(u.ekrany) == 18 and len(u.kontenery) == 6
     assert u.progi["ram"] == [90, 95, True] and u.speedtest_co_h == 0
 
 

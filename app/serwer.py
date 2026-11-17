@@ -32,11 +32,11 @@ KATALOG_DEV = os.environ.get("LCD_DEV", "/dev")
 KATALOG_SYS = os.environ.get("LCD_SYS", "/sys")
 KATALOG_PROC = os.environ.get("LCD_PROC", "/proc")
 PANEL = Path(__file__).parent / "panel" / "index.html"
-WERSJA = os.environ.get("LCD_WERSJA", "0.4.0")
+WERSJA = os.environ.get("LCD_WERSJA", "0.5.0")
 
 # Klucze ustawień zapisywane razem z motywem (eksport/import układu).
 KLUCZE_MOTYWU = ("motyw", "orientacja", "ekrany", "progi", "sortuj_awarie", "krytyczne_przypnij",
-                 "krytyczne_jasnosc", "krytyczne_ramka", "jezyk", "przelaczanie_s", "rodzaje_alertow")
+                 "krytyczne_jasnosc", "krytyczne_ramka", "jezyk", "przelaczanie_s", "rodzaje_alertow", "naglowek_polaczenia")
 
 
 def utworz_petle() -> Petla:
@@ -394,6 +394,34 @@ def ekrany_pulpitu(body: EkranyPulpitu, authorization: str | None = Header(defau
 def usun_ekrany_pulpitu(authorization: str | None = Header(default=None)):
     _sprawdz_token(authorization)
     _petla().zbieracz.ustaw_ekrany_pulpitu(None)
+    _petla()._zmiana.set()
+    return {"ok": True}
+
+
+# --- ikony połączeń w nagłówku (status połączeń z pulpitu homelabbera) ---
+class IkonaPolaczenia(BaseModel):
+    rodzaj: str = Field(pattern="^(internet|vpn|tunel|bt|cast)$")
+    stan: str = Field(default="ok", pattern="^(ok|uwaga|alarm|szary|gra)$")
+    liczba: int | None = Field(default=None, ge=0, le=99)
+
+
+class PolaczeniaPulpitu(BaseModel):
+    ikony: list[IkonaPolaczenia] = Field(max_length=6)
+
+
+@app.post("/api/pulpit/polaczenia")
+def polaczenia_pulpitu(body: PolaczeniaPulpitu, authorization: str | None = Header(default=None)):
+    """Pulpit wysyła co 30 s ikony połączeń (internet, VPN, tunel, Bluetooth, wysyłanie); po 2 min bez nich znikają."""
+    _sprawdz_token(authorization)
+    _petla().zbieracz.ustaw_polaczenia_pulpitu([i.model_dump(exclude_none=True) for i in body.ikony])
+    _petla()._zmiana.set()
+    return {"ok": True}
+
+
+@app.delete("/api/pulpit/polaczenia")
+def usun_polaczenia_pulpitu(authorization: str | None = Header(default=None)):
+    _sprawdz_token(authorization)
+    _petla().zbieracz.ustaw_polaczenia_pulpitu(None)
     _petla()._zmiana.set()
     return {"ok": True}
 
