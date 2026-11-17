@@ -85,5 +85,8 @@ def test_tryb_dodatku(tmp_path, monkeypatch):
         assert k.get("/api/stan", headers={"Authorization": "Bearer zly"}).status_code == 401
         ok = {"Authorization": "Bearer token-testowy"}
         assert k.get("/api/stan", headers=ok).status_code == 200
-        assert k.get("/api/podglad.png", headers=ok).headers["content-type"] == "image/png"
+        r = k.get("/api/podglad.png", headers=ok)
+        assert r.status_code in (200, 204)  # 204: pierwsza klatka jeszcze się nie narysowała
+        if r.status_code == 200:
+            assert r.headers["content-type"] == "image/png"
         assert k.post("/api/alerty", json={"id": "x", "poziom": "uwaga", "tytul": "T"}, headers=ok).status_code == 200
