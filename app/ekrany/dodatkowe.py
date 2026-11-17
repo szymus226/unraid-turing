@@ -19,7 +19,7 @@ TEKSTY = {
            "tunel": "Tunel Cloudflare", "tailscale": "Tailscale", "z_pulpitu": "z pulpitu",
            "system_unraid": "Unraid", "aktualny": "aktualny", "wtyczki": "Wtyczki", "kontenery": "Kontenery",
            "do_aktualizacji": "do aktualizacji", "kopia": "Kopia appdata", "parity_kontrola": "Kontrola parity",
-           "restart": "Ostatni restart", "temu": "temu", "bledow": "błędów",
+           "restart": "Ostatni restart", "temu": "temu", "bledow": "błędów", "inne_serwery": "inne serwery", "nieudane": "nieudane",
            "wszystko_ok": "Wszystko w porządku", "zeskanuj": "Zeskanuj telefonem, żeby otworzyć panel",
            "tylko_lan": "działa tylko w sieci domowej",
            "speedtest": "SPEEDTEST", "ostatni": "Ostatni test", "co": "co", "ping": "Ping",
@@ -34,7 +34,7 @@ TEKSTY = {
            "tunel": "Cloudflare tunnel", "tailscale": "Tailscale", "z_pulpitu": "from desktop",
            "system_unraid": "Unraid", "aktualny": "up to date", "wtyczki": "Plugins", "kontenery": "Containers",
            "do_aktualizacji": "to update", "kopia": "Appdata backup", "parity_kontrola": "Parity check",
-           "restart": "Last restart", "temu": "ago", "bledow": "errors",
+           "restart": "Last restart", "temu": "ago", "bledow": "errors", "inne_serwery": "other servers", "nieudane": "failed",
            "wszystko_ok": "All good", "zeskanuj": "Scan with your phone to open the panel",
            "tylko_lan": "works on your home network only",
            "speedtest": "SPEEDTEST", "ostatni": "Last test", "co": "every", "ping": "Ping",
@@ -73,11 +73,21 @@ def wiersze_aktualizacji(t, a):
     def ile(v):
         return ("—", "szary") if v is None else (f"{v} {t['do_aktualizacji']}", "uwaga" if v else "ok")
     wtyczki, kontenery = ile(a.get("wtyczki")), ile(a.get("kontenery"))
+    etykieta_kontenerow = t["kontenery"]
+    p = a.get("pulpit")
+    if p:
+        # Pulpit homelabbera wie więcej niż Unraid: jego kontenery, te spoza niego i nieudane aktualizacje.
+        n = p["available"] + p["outside"]
+        kontenery = (f"{n} {t['do_aktualizacji']}", "uwaga" if n else "ok")
+        if p["failed"]:
+            kontenery = (f"{n} · {t['nieudane']}: {p['failed']}", "alarm")
+        if p["servers"]:
+            etykieta_kontenerow += f" · {t['inne_serwery']}: {p['servers']}"
     unraid = (f"{a['wersja']} · {t['aktualny']}", "ok") if not a.get("unraid_nowa") else (f"{a['wersja']} → {a['unraid_nowa']}", "uwaga")
     return [
         (t["system_unraid"], *unraid),
         (t["wtyczki"], *wtyczki),
-        (t["kontenery"], *kontenery),
+        (etykieta_kontenerow, *kontenery),
         (t["kopia"], a["kopia"], a["kopia_stan"]),
         (t["parity_kontrola"], f"{a['parity']} · {a['parity_bledy']} {t['bledow']}" if a["parity"] != "—" else "—",
          "szary" if a["parity"] == "—" else "ok" if not a["parity_bledy"] else "alarm"),

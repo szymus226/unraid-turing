@@ -62,7 +62,7 @@ EKRANY: dict[str, OpisEkranu] = {e.klucz: e for e in [
         ("Stan|Status", "Następny test (co ile, ustawiasz w „Dyski i kontenery”)|Next test (interval set in “Disks & containers”)", "tekst|text")],
         warunek="speedtest"),
     OpisEkranu("aktualizacje", "Aktualizacje|Updates", dodatkowe.ekran_aktualizacje, poziome.ekran_aktualizacje, [
-        ("Karty|Cards", "Unraid, wtyczki, kontenery do aktualizacji|Unraid, plugins, containers to update", "stan|state"),
+        ("Karty|Cards", "Unraid, wtyczki, kontenery do aktualizacji (z pulpitu homelabbera, gdy je wysyła)|Unraid, plugins, containers to update (from the homelabber desktop when it sends them)", "stan|state"),
         ("Karty|Cards", "Kopia appdata, kontrola parity, ostatni restart|Appdata backup, parity check, last restart", "stan|state")]),
     OpisEkranu("zegar", "Zegar|Clock", dodatkowe.ekran_zegar, poziome.ekran_zegar, [
         ("Zegar|Clock", "Godzina i data|Time and date", "duże cyfry|large digits"),

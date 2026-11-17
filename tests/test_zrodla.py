@@ -270,6 +270,23 @@ def test_alert_zewnetrzny_wygasa(host):
     assert not any(a.id == "zew:dns" for a in z.odczytaj(Ustawienia().popraw()).alerty)
 
 
+def test_aktualizacje_z_pulpitu_zastepuja_licznik_unraida(host):
+    from app.ekrany.dodatkowe import TEKSTY, wiersze_aktualizacji
+    z = Zbieracz(host, w_tle=False)
+    u = Ustawienia().popraw()
+    assert z.dane(z.odczytaj(u), u)["aktualizacje"]["pulpit"] is None
+    z.ustaw_aktualizacje_pulpitu({"available": 3, "auto": 1, "notify": 2, "outside": 1, "servers": 2, "failed": 0, "checkedAt": None})
+    a = z.dane(z.odczytaj(u), u)["aktualizacje"]
+    wiersz = wiersze_aktualizacji(TEKSTY["pl"], a)[2]
+    assert wiersz == ("Kontenery · inne serwery: 2", "4 do aktualizacji", "uwaga")
+    z.ustaw_aktualizacje_pulpitu(dict(a["pulpit"], failed=1))
+    assert wiersze_aktualizacji(TEKSTY["en"], z.dane(z.odczytaj(u), u)["aktualizacje"])[2][1:] == ("4 · failed: 1", "alarm")
+    # Po 15 min bez nowych liczb ekran wraca do licznika Unraida.
+    assert z.aktualizacje_z_pulpitu(teraz=time.time() + 16 * 60) is None
+    z.ustaw_aktualizacje_pulpitu(None)
+    assert z.aktualizacje_z_pulpitu() is None
+
+
 @pytest.mark.parametrize("poziomo", [False, True])
 @pytest.mark.parametrize("jezyk", ["pl", "en"])
 def test_wszystkie_ekrany_z_prawdziwych_danych(host, jezyk, poziomo):

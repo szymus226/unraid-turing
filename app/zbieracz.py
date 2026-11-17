@@ -48,6 +48,10 @@ log = logging.getLogger(__name__)
 TRWANIE_S = 30   # próg musi być przekroczony tyle sekund, zanim pojawi się alert (bez fałszywych skoków)
 
 
+# Liczby aktualizacji z pulpitu są ważne 15 min (pulpit wysyła je co minutę).
+AKTUALIZACJE_PULPITU_S = 15 * 60
+
+
 def _liczba(v: float, jezyk: str, miejsca: int = 1) -> str:
     tekst = f"{v:.{miejsca}f}"
     return tekst.replace(".", ",") if jezyk == "pl" else tekst
@@ -170,6 +174,9 @@ class Zbieracz:
         self.speedtest = Speedtest(katalog_konfiguracji / "speedtest.json" if katalog_konfiguracji else None)
         self.pogoda = Pogoda()
         self.zewnetrzne: dict[str, AlertZewnetrzny] = {}
+        # Liczby aktualizacji z pulpitu homelabbera (dodatek „Smart ekran”) i czas ich nadejścia.
+        self.aktualizacje_pulpitu: dict | None = None
+        self._aktualizacje_pulpitu_czas = 0.0
         self._blokada = threading.Lock()
         self._od_kiedy: dict[str, float] = {}
         self._wolne: dict = {}          # wyniki wolnych odczytów (aktualizacje, powiadomienia, VM)
@@ -197,6 +204,19 @@ class Zbieracz:
     def usun_zewnetrzny(self, id_: str) -> bool:
         with self._blokada:
             return self.zewnetrzne.pop(id_, None) is not None
+
+    # --- liczby aktualizacji z pulpitu ---
+    def ustaw_aktualizacje_pulpitu(self, liczby: dict | None) -> None:
+        with self._blokada:
+            self.aktualizacje_pulpitu = liczby
+            self._aktualizacje_pulpitu_czas = time.time()
+
+    def aktualizacje_z_pulpitu(self, teraz: float | None = None) -> dict | None:
+        """Liczby z pulpitu, jeśli przyszły w ostatnich 15 min; `None` = ekran pokazuje licznik Unraida."""
+        teraz = time.time() if teraz is None else teraz
+        if self.aktualizacje_pulpitu is None or teraz - self._aktualizacje_pulpitu_czas > AKTUALIZACJE_PULPITU_S:
+            return None
+        return self.aktualizacje_pulpitu
 
     # --- wyciszanie alertów krytycznych (do rozwiązania problemu) ---
     def _wczytaj_wyciszone(self) -> set[str]:
@@ -440,6 +460,7 @@ class Zbieracz:
         d["aktualizacje"] = {
             "wersja": un.wersja or "—", "unraid_nowa": wolne.get("unraid_nowa") if wolne.get("unraid_nowa") not in (None, un.wersja) else None,
             "wtyczki": wolne.get("wtyczki"), "kontenery": wolne.get("kontenery_aktualizacje"),
+            "pulpit": self.aktualizacje_z_pulpitu(),
             "kopia": "—", "kopia_stan": "szary",
             "parity": data_wzgledna(un.parity_ostatnia, j, teraz) if un.parity_ostatnia else "—",
             "parity_bledy": un.parity_ostatnia_bledy,
