@@ -70,3 +70,23 @@ def test_motyw_eksport_import(klient):
 def test_logi(klient):
     assert isinstance(klient.get("/api/logi").json(), list)
     assert klient.get("/api/logi.txt").status_code == 200
+
+
+def test_tryb_dodatku(tmp_path, monkeypatch):
+    monkeypatch.setenv("LCD_KONFIGURACJA", str(tmp_path))
+    monkeypatch.setenv("LCD_TOKEN", "token-testowy")
+    monkeypatch.setenv("LCD_PANEL", "0")
+    monkeypatch.setenv("LCD_TYLKO_TOKEN", "1")
+    (tmp_path / "ustawienia.json").write_text('{"tryb": "symulacja"}')
+    from app import serwer
+    with TestClient(serwer.app) as k:
+        assert k.get("/").status_code == 404
+        assert k.get("/api/stan").status_code == 401
+        assert k.get("/api/stan", headers={"Authorization": "Bearer zly"}).status_code == 401
+        ok = {"Authorization": "Bearer token-testowy"}
+        assert k.get("/api/stan", headers=ok).status_code == 200
+        r = k.get("/api/podglad.png", headers=ok)
+        assert r.status_code in (200, 204)  # 204: pierwsza klatka jeszcze się nie narysowała
+        if r.status_code == 200:
+            assert r.headers["content-type"] == "image/png"
+        assert k.post("/api/alerty", json={"id": "x", "poziom": "uwaga", "tytul": "T"}, headers=ok).status_code == 200

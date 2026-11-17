@@ -387,6 +387,8 @@ class Zbieracz:
         d["cache_uzycie"] = round(100 * un.cache_zajete_kb / un.cache_rozmiar_kb) if un.cache_rozmiar_kb else 0
         d["cache_txt"] = para_rozmiarow(un.cache_zajete_kb, un.cache_rozmiar_kb, j) if un.cache_rozmiar_kb else "—"
         dyski = [x for x in un.dyski if u.dyski is None or x.nazwa in u.dyski]
+        if u.dyski is not None:   # kolejność ustawiona w aplikacji pulpitu (przeciąganie wierszy)
+            dyski.sort(key=lambda x: u.dyski.index(x.nazwa))
         d["dyski"] = [(x.etykieta, x.temp or 0, x.stan, x.aktywny) for x in dyski]
         d["dyski_io"] = [(x.etykieta, x.aktywny, *o.io.get(x.urzadzenie, (0.0, 0.0)), x.stan) for x in dyski]
         # kontenery i VM

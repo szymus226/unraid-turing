@@ -89,6 +89,13 @@ albo w zmiennej `LCD_TOKEN`. Panel nigdy go nie pokazuje.
 
 `poziom` to `alarm` (krytyczny) albo `uwaga`. Alert znika sam po `wazny_s` sekundach.
 
+### Tryb dodatku (pulpit homelabbera)
+
+Dodatek „Smart ekran” w homelabberze instaluje tę aplikację i ma własne okno z ustawieniami.
+Uruchamia kontener ze zmiennymi `LCD_PANEL=0` (własny panel wyłączony) i `LCD_TYLKO_TOKEN=1`
+(każde wywołanie `/api/*` wymaga tokenu). Kontener nie publikuje wtedy żadnego portu na serwerze,
+a do ekranu dociera się tylko przez zalogowany pulpit. `LCD_ADRES_PANELU` ustawia adres w kodzie QR.
+
 ## Licencja
 
 GPLv3. Protokół ekranu opisano na podstawie projektu
@@ -139,6 +146,10 @@ removes it. Both need `Authorization: Bearer <token>`; the token is in
 `/mnt/user/appdata/unraid-lcd/token.txt` (created on first start, mode 600) or in `LCD_TOKEN`. The panel
 never shows it. Body: `{"id", "poziom": "alarm"|"uwaga", "tytul", "opis", "wazny_s"}`; the alert clears
 itself after `wazny_s` seconds.
+
+**Add-on mode** (homelabber desktop): the "Smart screen" add-on installs this app and has its own settings
+window. It runs the container with `LCD_PANEL=0` (own panel off) and `LCD_TYLKO_TOKEN=1` (every `/api/*`
+call needs the token), so no port is published on the server. `LCD_ADRES_PANELU` sets the QR code address.
 
 **License:** GPLv3. The display protocol follows
 [turing-smart-screen-python](https://github.com/mathoudebine/turing-smart-screen-python) (GPLv3).

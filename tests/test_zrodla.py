@@ -359,3 +359,11 @@ def test_ustawienia_ekranow_naprawiane():
     assert u.ekrany[0] == {"klucz": "zegar", "wl": True, "czas_s": 3, "ukryte": [1]}
     assert len(u.ekrany) == 12 and len(u.kontenery) == 6
     assert u.progi["ram"] == [90, 95, True] and u.speedtest_co_h == 0
+
+
+def test_kolejnosc_dyskow_z_ustawien(host):
+    z = Zbieracz(host, w_tle=False)
+    u = Ustawienia(dyski=["cache", "disk1"], sortuj_awarie=False).popraw()
+    d = z.dane(z.odczytaj(u), u, adres_panelu="", teraz=0)
+    nazwy = {x.etykieta: x.nazwa for x in z.ostatnie.unraid.dyski} if z.ostatnie else {}
+    assert [nazwy.get(e[0], e[0]) for e in d["dyski"]] == ["cache", "disk1"]

@@ -28,4 +28,11 @@ jobs:
           curl -fs -o podglad.png localhost:8765/api/podglad.png
           curl -fs localhost:8765/ | grep -q '<title>Unraid LCD</title>'
           curl -fs -o system.png localhost:8765/api/ekran/system.png
+      - name: Tryb dodatku (bez panelu, API tylko z tokenem)
+        run: |
+          docker run -d --name lcd2 -p 8767:8765 -v "$PWD/cfg:/config" -e LCD_PANEL=0 -e LCD_TYLKO_TOKEN=1 \
+            -e LCD_TOKEN=token-ci --cap-drop ALL --read-only --tmpfs /tmp unraid-lcd:test
+          for i in $(seq 1 20); do curl -fs -H 'Authorization: Bearer token-ci' localhost:8767/api/stan && break; sleep 1; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8767/api/stan)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8767/)" = 404
           docker logs lcd

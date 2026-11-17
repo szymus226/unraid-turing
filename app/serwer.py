@@ -1,5 +1,6 @@
 """Panel WWW i API (FastAPI). Panel działa tylko w sieci domowej i nie ma logowania,
 więc API nie zwraca niczego wrażliwego (bez haseł, tokenów i zmiennych kontenerów).
+W trybie dodatku (LCD_PANEL=0, LCD_TYLKO_TOKEN=1) panel jest wyłączony, a API wymaga tokenu.
 """
 from __future__ import annotations
 
@@ -13,8 +14,8 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
 
-from fastapi import Body, FastAPI, Header, HTTPException, Query, Response
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi import Body, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from . import ustawienia as konfiguracja
@@ -31,7 +32,7 @@ KATALOG_DEV = os.environ.get("LCD_DEV", "/dev")
 KATALOG_SYS = os.environ.get("LCD_SYS", "/sys")
 KATALOG_PROC = os.environ.get("LCD_PROC", "/proc")
 PANEL = Path(__file__).parent / "panel" / "index.html"
-WERSJA = "0.2.0"
+WERSJA = os.environ.get("LCD_WERSJA", "0.3.0")
 
 # Klucze ustawień zapisywane razem z motywem (eksport/import układu).
 KLUCZE_MOTYWU = ("motyw", "orientacja", "ekrany", "progi", "sortuj_awarie", "krytyczne_przypnij",
@@ -97,6 +98,27 @@ async def cykl_zycia(app: FastAPI):
 
 
 app = FastAPI(title="Unraid LCD", version=WERSJA, lifespan=cykl_zycia, docs_url=None, redoc_url=None)
+
+
+def _wlaczone(nazwa: str, domyslnie: bool) -> bool:
+    wartosc = os.environ.get(nazwa)
+    if wartosc is None or not wartosc.strip():
+        return domyslnie
+    return wartosc.strip().lower() not in ("0", "false", "nie", "no", "off")
+
+
+# Tryb dodatku (np. pulpit homelabbera): własny panel wyłączony (LCD_PANEL=0), a całe API
+# tylko z tokenem (LCD_TYLKO_TOKEN=1). Wtedy aplikacja nie potrzebuje portu na serwerze.
+@app.middleware("http")
+async def bramka_tokenu(request: Request, dalej):
+    sciezka = request.url.path
+    if sciezka == "/" and not _wlaczone("LCD_PANEL", True):
+        return PlainTextResponse("Panel wyłączony: ustawienia są w aplikacji pulpitu. / Panel disabled: settings are in the desktop app.", status_code=404)
+    if sciezka.startswith("/api/") and _wlaczone("LCD_TYLKO_TOKEN", False):
+        naglowek = request.headers.get("authorization") or ""
+        if not secrets.compare_digest(naglowek.encode(), f"Bearer {app.state.token}".encode()):
+            return JSONResponse({"detail": "brak lub zły token"}, status_code=401)
+    return await dalej(request)
 
 
 def _petla() -> Petla:
