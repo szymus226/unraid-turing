@@ -89,6 +89,14 @@ albo w zmiennej `LCD_TOKEN`. Panel nigdy go nie pokazuje.
 
 `poziom` to `alarm` (krytyczny) albo `uwaga`. Alert znika sam po `wazny_s` sekundach.
 
+### Liczby aktualizacji z pulpitu homelabbera
+
+`POST /api/aktualizacje` (ten sam token) przyjmuje
+`{"available", "auto", "notify", "outside", "servers", "failed", "checkedAt"}`. Ekran „Aktualizacje”
+pokazuje wtedy w karcie „Kontenery” liczbę z pulpitu (jego kontenery i te spoza niego), nieudane
+aktualizacje i liczbę innych serwerów. Pulpit wysyła liczby co minutę; gdy przez 15 min nic nie
+przyjdzie albo pulpit wyśle `DELETE /api/aktualizacje`, karta wraca do licznika Unraida.
+
 ### Tryb dodatku (pulpit homelabbera)
 
 Dodatek „Smart ekran” w homelabberze instaluje tę aplikację i ma własne okno z ustawieniami.
@@ -146,6 +154,12 @@ removes it. Both need `Authorization: Bearer <token>`; the token is in
 `/mnt/user/appdata/unraid-lcd/token.txt` (created on first start, mode 600) or in `LCD_TOKEN`. The panel
 never shows it. Body: `{"id", "poziom": "alarm"|"uwaga", "tytul", "opis", "wazny_s"}`; the alert clears
 itself after `wazny_s` seconds.
+
+**Update counts from the homelabber desktop:** `POST /api/aktualizacje` (same token) takes
+`{"available", "auto", "notify", "outside", "servers", "failed", "checkedAt"}`. The "Updates" screen then
+shows the desktop's count in the "Containers" card (its containers and the ones outside it), failed updates
+and the number of other servers. The desktop sends them every minute; after 15 min without new counts, or
+after `DELETE /api/aktualizacje`, the card goes back to Unraid's own counter.
 
 **Add-on mode** (homelabber desktop): the "Smart screen" add-on installs this app and has its own settings
 window. It runs the container with `LCD_PANEL=0` (own panel off) and `LCD_TYLKO_TOKEN=1` (every `/api/*`

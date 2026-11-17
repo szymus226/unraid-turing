@@ -46,6 +46,15 @@ def test_alerty_wymagaja_tokenu(klient):
     assert klient.delete("/api/alerty/tunel", headers={"Authorization": "Bearer token-testowy"}).json()["usuniety"]
 
 
+def test_aktualizacje_z_pulpitu_wymagaja_tokenu(klient):
+    liczby = {"available": 2, "auto": 1, "notify": 1, "outside": 0, "servers": 0, "failed": 0, "checkedAt": "2026-11-17T03:00:00Z"}
+    assert klient.post("/api/aktualizacje", json=liczby).status_code == 401
+    ok = {"Authorization": "Bearer token-testowy"}
+    assert klient.post("/api/aktualizacje", json=dict(liczby, available=-1), headers=ok).status_code == 422
+    assert klient.post("/api/aktualizacje", json=liczby, headers=ok).status_code == 200
+    assert klient.delete("/api/aktualizacje", headers=ok).status_code == 200
+
+
 def test_alert_testowy(klient):
     klient.post("/api/alert-testowy")
     assert "test-panelu" in serwer.app.state.petla.zbieracz.zewnetrzne

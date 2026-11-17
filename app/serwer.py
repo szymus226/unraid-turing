@@ -32,7 +32,7 @@ KATALOG_DEV = os.environ.get("LCD_DEV", "/dev")
 KATALOG_SYS = os.environ.get("LCD_SYS", "/sys")
 KATALOG_PROC = os.environ.get("LCD_PROC", "/proc")
 PANEL = Path(__file__).parent / "panel" / "index.html"
-WERSJA = os.environ.get("LCD_WERSJA", "0.3.0")
+WERSJA = os.environ.get("LCD_WERSJA", "0.3.1")
 
 # Klucze ustawień zapisywane razem z motywem (eksport/import układu).
 KLUCZE_MOTYWU = ("motyw", "orientacja", "ekrany", "progi", "sortuj_awarie", "krytyczne_przypnij",
@@ -331,6 +331,35 @@ def dodaj_alert(alert: AlertZewnetrzny, authorization: str | None = Header(defau
 def usun_alert(id_: str, authorization: str | None = Header(default=None)):
     _sprawdz_token(authorization)
     return {"usuniety": _petla().zbieracz.usun_zewnetrzny(id_)}
+
+
+# --- liczby aktualizacji z pulpitu (ekran „Aktualizacje”); token jak przy alertach ---
+class AktualizacjePulpitu(BaseModel):
+    available: int = Field(ge=0, le=9999)
+    auto: int = Field(default=0, ge=0, le=9999)
+    notify: int = Field(default=0, ge=0, le=9999)
+    outside: int = Field(default=0, ge=0, le=9999)
+    servers: int = Field(default=0, ge=0, le=9999)
+    failed: int = Field(default=0, ge=0, le=9999)
+    checkedAt: str | None = Field(default=None, max_length=40)
+
+
+@app.post("/api/aktualizacje")
+def aktualizacje_pulpitu(liczby: AktualizacjePulpitu, authorization: str | None = Header(default=None)):
+    """Pulpit wysyła liczby co minutę; ekran pokazuje je zamiast licznika Unraida przez 15 min."""
+    _sprawdz_token(authorization)
+    _petla().zbieracz.ustaw_aktualizacje_pulpitu(liczby.model_dump())
+    _petla()._zmiana.set()
+    return {"ok": True}
+
+
+@app.delete("/api/aktualizacje")
+def usun_aktualizacje_pulpitu(authorization: str | None = Header(default=None)):
+    """Liczby wyłączone w pulpicie: ekran wraca do licznika Unraida."""
+    _sprawdz_token(authorization)
+    _petla().zbieracz.ustaw_aktualizacje_pulpitu(None)
+    _petla()._zmiana.set()
+    return {"ok": True}
 
 
 # --- pogoda ---
