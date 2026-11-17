@@ -166,16 +166,21 @@ def naglowek(d, tytul, indeks, dane, w=W):
             else:
                 kolor = KOLORY["akcent"] if i == indeks else KOLORY["linia"]
             d.ellipse((x - 3, 17, x + 3, 23), fill=kolor)
-    else:
-        d.text((w - M - 62, 20), f"{indeks + 1}/{razem}", font=font(13, "SemiBold"),
-               fill=KOLORY["na_alarmie"] if czerwony else KOLORY["szary"], anchor="rm")
     # Licznik: biały z liczbą krytycznych albo żółty z liczbą ostrzeżeń.
+    koniec = M + d.textlength(tytul, font=f)
     if krytyczne or ostrzezenia:
-        x0 = M + d.textlength(tytul, font=f) + 10
+        x0 = koniec + 10
         tekst = f"! {krytyczne or ostrzezenia}"
         szer = d.textlength(tekst, font=font(13, "Bold")) + 14
+        koniec = x0 + szer
         d.rounded_rectangle((x0, 11, x0 + szer, 29), radius=9, fill=(KOLORY["na_alarmie"] if czerwony else KOLORY["alarm"]) if krytyczne else KOLORY["uwaga"])
         d.text((x0 + szer / 2, 20), tekst, font=font(13, "Bold"), fill=(KOLORY["alarm"] if czerwony else KOLORY["na_alarmie"]) if krytyczne else KOLORY["tlo"], anchor="mm")
+    # Numer ekranu „7/11” tylko, gdy mieści się za tytułem i licznikiem (długie tytuły go chowają).
+    if razem > 6:
+        numer = f"{indeks + 1}/{razem}"
+        fn = font(13, "SemiBold")
+        if w - M - 62 - d.textlength(numer, font=fn) >= koniec + 8:
+            d.text((w - M - 62, 20), numer, font=fn, fill=KOLORY["na_alarmie"] if czerwony else KOLORY["szary"], anchor="rm")
 
 
 def pasek(d, x, y, szer, wys, procent, kolor):
