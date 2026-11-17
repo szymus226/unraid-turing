@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from . import ustawienia as konfiguracja
-from .ekrany import rejestr, rysuj
+from .ekrany import pulpit, rejestr, rysuj
 from .odczyt.pogoda import szukaj_miejscowosci
 from .odczyt.system import CzytnikSystemu, temperatura_cpu
 from .petla import Petla
@@ -32,7 +32,7 @@ KATALOG_DEV = os.environ.get("LCD_DEV", "/dev")
 KATALOG_SYS = os.environ.get("LCD_SYS", "/sys")
 KATALOG_PROC = os.environ.get("LCD_PROC", "/proc")
 PANEL = Path(__file__).parent / "panel" / "index.html"
-WERSJA = os.environ.get("LCD_WERSJA", "0.3.1")
+WERSJA = os.environ.get("LCD_WERSJA", "0.4.0")
 
 # Klucze ustawień zapisywane razem z motywem (eksport/import układu).
 KLUCZE_MOTYWU = ("motyw", "orientacja", "ekrany", "progi", "sortuj_awarie", "krytyczne_przypnij",
@@ -358,6 +358,42 @@ def usun_aktualizacje_pulpitu(authorization: str | None = Header(default=None)):
     """Liczby wyłączone w pulpicie: ekran wraca do licznika Unraida."""
     _sprawdz_token(authorization)
     _petla().zbieracz.ustaw_aktualizacje_pulpitu(None)
+    _petla()._zmiana.set()
+    return {"ok": True}
+
+
+# --- ekrany z pulpitu (E3): karty gotowe do narysowania; token jak przy alertach ---
+class KartaPulpitu(BaseModel):
+    etykieta: str = Field(min_length=1, max_length=40)
+    wartosc: str = Field(min_length=1, max_length=40)
+    stan: str = Field(default="ok", pattern="^(ok|uwaga|alarm|szary)$")
+    pasek: float | None = Field(default=None, ge=0, le=100)
+    prawa: str | None = Field(default=None, max_length=30)
+    pod: str | None = Field(default=None, max_length=50)
+
+
+class EkranyPulpitu(BaseModel):
+    ekrany: dict[str, list[KartaPulpitu | None]]
+
+
+@app.post("/api/pulpit/ekrany")
+def ekrany_pulpitu(body: EkranyPulpitu, authorization: str | None = Header(default=None)):
+    """Pulpit wysyła co 30 s karty włączonych ekranów; ekran bez nowych kart przez 2 min wypada z przełączania."""
+    _sprawdz_token(authorization)
+    nieznane = [k for k in body.ekrany if k not in pulpit.EKRANY_PULPITU]
+    if nieznane:
+        raise HTTPException(422, f"nieznane ekrany: {', '.join(nieznane)}")
+    if any(len(v) > 6 for v in body.ekrany.values()):
+        raise HTTPException(422, "najwyżej 6 kart na ekranie")
+    _petla().zbieracz.ustaw_ekrany_pulpitu({k: [x.model_dump(exclude_none=True) if x else None for x in v] for k, v in body.ekrany.items()})
+    _petla()._zmiana.set()
+    return {"ok": True}
+
+
+@app.delete("/api/pulpit/ekrany")
+def usun_ekrany_pulpitu(authorization: str | None = Header(default=None)):
+    _sprawdz_token(authorization)
+    _petla().zbieracz.ustaw_ekrany_pulpitu(None)
     _petla()._zmiana.set()
     return {"ok": True}
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from . import dodatkowe, poziome, rysuj
+from . import dodatkowe, poziome, pulpit, rysuj
 
 
 @dataclass
@@ -71,6 +71,9 @@ EKRANY: dict[str, OpisEkranu] = {e.klucz: e for e in [
     OpisEkranu("qr", "Kod QR panelu|Panel QR code", dodatkowe.ekran_qr, poziome.ekran_qr, [
         ("Kod QR|QR code", "Adres panelu w sieci domowej|Panel address on the home network", "kod|code")]),
 ]}
+# Ekrany z pulpitu homelabbera (E3): pokazywane tylko, gdy pulpit niedawno przysłał ich karty.
+EKRANY.update({k: OpisEkranu(k, nazwa, pulpit._pionowy(k), pulpit._poziomy(k), [(a, b, "karta|card") for a, b in karty], warunek="pulpit")
+               for k, (_, nazwa, karty, _) in pulpit.EKRANY_PULPITU.items()})
 
 
 def teksty(jezyk: str) -> dict:
@@ -82,6 +85,8 @@ def spelnia_warunek(opis: OpisEkranu, dane: dict) -> bool:
         return bool(dane.get("parity_trwa"))
     if opis.warunek == "speedtest":
         return bool(dane.get("speedtest_wl"))
+    if opis.warunek == "pulpit":
+        return opis.klucz in (dane.get("pulpit") or {})
     return True
 
 
