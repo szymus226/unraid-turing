@@ -180,6 +180,7 @@ class Zbieracz:
         self.aktualizacje_pulpitu: dict | None = None
         # Karty ekranów z pulpitu: klucz → (karty, czas nadejścia).
         self.ekrany_pulpitu: dict[str, tuple[list, float]] = {}
+        self.polaczenia_pulpitu: tuple[list[dict], float] | None = None
         self._aktualizacje_pulpitu_czas = 0.0
         self._blokada = threading.Lock()
         self._od_kiedy: dict[str, float] = {}
@@ -219,6 +220,19 @@ class Zbieracz:
     def ekrany_z_pulpitu(self, teraz: float | None = None) -> dict[str, list]:
         teraz = time.time() if teraz is None else teraz
         return {k: v for k, (v, czas) in self.ekrany_pulpitu.items() if teraz - czas <= EKRANY_PULPITU_S}
+
+    # --- ikony połączeń z pulpitu ---
+    def ustaw_polaczenia_pulpitu(self, ikony: list[dict] | None) -> None:
+        with self._blokada:
+            self.polaczenia_pulpitu = (ikony, time.time()) if ikony else None
+
+    def polaczenia_z_pulpitu(self, teraz: float | None = None) -> list[dict] | None:
+        """Ikony do nagłówka, jeśli przyszły w ostatnich 2 min; `None` = nagłówek bez ikon."""
+        teraz = time.time() if teraz is None else teraz
+        p = self.polaczenia_pulpitu
+        if not p or teraz - p[1] > EKRANY_PULPITU_S:
+            return None
+        return p[0]
 
     # --- liczby aktualizacji z pulpitu ---
     def ustaw_aktualizacje_pulpitu(self, liczby: dict | None) -> None:
@@ -483,6 +497,7 @@ class Zbieracz:
         }
         # zegar
         d["pulpit"] = self.ekrany_z_pulpitu()
+        d["_polaczenia"] = self.polaczenia_z_pulpitu(teraz) if u.naglowek_polaczenia else None
         d["zegar"] = {"godzina": d["godzina"], "dzien_tyg": lok.tm_wday, "dzien": lok.tm_mday, "miesiac": lok.tm_mon,
                       "pogoda": self.pogoda.biezaca}
         return d

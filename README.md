@@ -102,9 +102,18 @@ przyjdzie albo pulpit wyśle `DELETE /api/aktualizacje`, karta wraca do licznika
 `POST /api/pulpit/ekrany` (ten sam token) przyjmuje `{"ekrany": {"pulpit_zasilanie": [karta, …], …}}`.
 Karta to `{"etykieta", "wartosc", "stan": "ok"|"uwaga"|"alarm"|"szary", "pasek": 0–100, "prawa", "pod"}`,
 najwyżej 6 na ekran, `null` = puste miejsce. Ekrany: `pulpit_zasilanie`, `pulpit_pobieranie`,
-`pulpit_odtwarzanie`, `pulpit_kopie`, `pulpit_kamery`. Są na liście ekranów (domyślnie wyłączone) i pokazują
+`pulpit_odtwarzanie`, `pulpit_kopie`, `pulpit_kamery`, `pulpit_polaczenia`. Są na liście ekranów (domyślnie wyłączone) i pokazują
 się tylko wtedy, gdy pulpit przysłał karty w ostatnich 2 min. Aplikacja tylko je rysuje: nie łączy się
 z żadną usługą. `DELETE /api/pulpit/ekrany` czyści karty.
+
+### Połączenia w nagłówku
+
+`POST /api/pulpit/polaczenia` (ten sam token) przyjmuje `{"ikony": [{"rodzaj", "stan", "liczba"}]}`, najwyżej 6:
+`rodzaj` to `internet`, `vpn`, `tunel`, `bt` albo `cast`, `stan` to `ok`, `uwaga`, `alarm`, `szary` albo `gra`,
+`liczba` (opcjonalnie) stoi przy ikonie. Ikony rysują się przed godziną na każdym ekranie, a kropki ekranów
+zmieniają się wtedy w cienki pasek pod nagłówkiem. Gdy brakuje miejsca, odpadają ostatnie ikony. Po 2 min bez
+nowych ikon albo po `DELETE /api/pulpit/polaczenia` nagłówek wraca do zwykłego wyglądu. Ustawienie
+„Połączenia w nagłówku” (`naglowek_polaczenia`, domyślnie włączone) wyłącza ikony.
 
 ### Tryb dodatku (pulpit homelabbera)
 
@@ -173,8 +182,15 @@ after `DELETE /api/aktualizacje`, the card goes back to Unraid's own counter.
 **Screens from the homelabber desktop:** `POST /api/pulpit/ekrany` (same token) takes
 `{"ekrany": {"pulpit_zasilanie": [card, …], …}}`; a card is `{"etykieta", "wartosc", "stan", "pasek", "prawa", "pod"}`,
 at most 6 per screen, `null` for an empty slot. Screens: `pulpit_zasilanie`, `pulpit_pobieranie`,
-`pulpit_odtwarzanie`, `pulpit_kopie`, `pulpit_kamery`. They are in the screen list (off by default) and only show
+`pulpit_odtwarzanie`, `pulpit_kopie`, `pulpit_kamery`, `pulpit_polaczenia`. They are in the screen list (off by default) and only show
 when the desktop sent cards in the last 2 min. The app only draws them and connects to nothing.
+
+**Connections in the header:** `POST /api/pulpit/polaczenia` (same token) takes `{"ikony": [{"rodzaj", "stan", "liczba"}]}`,
+at most 6: `rodzaj` is `internet`, `vpn`, `tunel`, `bt` or `cast`, `stan` is `ok`, `uwaga`, `alarm`, `szary` or `gra`,
+and the optional `liczba` is shown next to the icon. The icons are drawn before the clock on every screen, and the
+screen dots turn into a thin bar under the header. When space runs out the last icons are dropped. After 2 min
+without new icons, or after `DELETE /api/pulpit/polaczenia`, the header looks as before. The "Connections in the
+header" setting (`naglowek_polaczenia`, on by default) turns the icons off.
 
 **Add-on mode** (homelabber desktop): the "Smart screen" add-on installs this app and has its own settings
 window. It runs the container with `LCD_PANEL=0` (own panel off) and `LCD_TYLKO_TOKEN=1` (every `/api/*`

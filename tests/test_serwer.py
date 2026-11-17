@@ -30,7 +30,7 @@ def test_zapis_ustawien_i_miniatury(klient, tmp_path):
     r = klient.get("/api/ekran/system.png?ukryte=1,2&jezyk=en")
     assert r.status_code == 200 and r.headers["content-type"] == "image/png"
     assert klient.get("/api/ekran/nieznany.png").status_code == 404
-    assert len(klient.get("/api/ekrany").json()) == 17
+    assert len(klient.get("/api/ekrany").json()) == 18
 
 
 def test_nawigacja(klient):
@@ -65,6 +65,19 @@ def test_ekrany_z_pulpitu(klient):
     assert klient.get("/api/ekran/pulpit_zasilanie.png").headers["content-type"] == "image/png"
     assert any(e["klucz"] == "pulpit_kamery" and e["warunek"] == "pulpit" for e in klient.get("/api/ekrany").json())
     assert klient.delete("/api/pulpit/ekrany", headers=ok).status_code == 200
+    assert klient.post("/api/pulpit/ekrany", json={"ekrany": {"pulpit_polaczenia": [{"etykieta": "Internet", "wartosc": "działa"}]}}, headers=ok).status_code == 200
+
+
+def test_ikony_polaczen_z_pulpitu(klient):
+    ok = {"Authorization": "Bearer token-testowy"}
+    ikony = {"ikony": [{"rodzaj": "internet", "stan": "ok"}, {"rodzaj": "bt", "liczba": 2}, {"rodzaj": "cast", "stan": "gra"}]}
+    assert klient.post("/api/pulpit/polaczenia", json=ikony).status_code == 401
+    assert klient.post("/api/pulpit/polaczenia", json={"ikony": [{"rodzaj": "radio"}]}, headers=ok).status_code == 422
+    assert klient.post("/api/pulpit/polaczenia", json={"ikony": [{"rodzaj": "internet"}] * 7}, headers=ok).status_code == 422
+    assert klient.post("/api/pulpit/polaczenia", json=ikony, headers=ok).status_code == 200
+    assert klient.get("/api/ekran/system.png").status_code == 200
+    assert klient.put("/api/ustawienia", json={"naglowek_polaczenia": False}).json()["naglowek_polaczenia"] is False
+    assert klient.delete("/api/pulpit/polaczenia", headers=ok).status_code == 200
 
 
 def test_alert_testowy(klient):

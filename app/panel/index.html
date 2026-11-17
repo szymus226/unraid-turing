@@ -213,6 +213,8 @@ td .op{display:block;font-size:12px;color:var(--szary)}
           <select id="jezyk-ekranu"><option value="pl">Polski</option><option value="en">English</option></select></div>
         <div class="wiersz"><label class="et" for="noc"><span data-t="Wyłącz ekran nocą|Turn off at night"></span><span class="pomoc" data-tip="Alert krytyczny włącza ekran także w tych godzinach.|A critical alert turns the display on during these hours too.">?</span></label>
           <input type="checkbox" id="noc"><input type="time" id="noc-od" value="23:00" data-tip="od|from"><span>–</span><input type="time" id="noc-do" value="07:00" data-tip="do|to"></div>
+        <div class="wiersz"><label class="et" for="naglowek-polaczenia"><span data-t="Połączenia w nagłówku|Connections in the header"></span><span class="pomoc" data-tip="Ikony internetu, VPN, tunelu, Bluetooth i wysyłania przed godziną na każdym ekranie. Dane wysyła pulpit homelabbera; bez niego nagłówek wygląda jak dotąd.|Internet, VPN, tunnel, Bluetooth and casting icons before the clock on every screen. The homelabber desktop sends the data; without it the header looks as before.">?</span></label>
+          <label class="przelacznik"><input type="checkbox" id="naglowek-polaczenia" checked><span></span></label></div>
       </div>
       <div class="karta"><h3 data-t="Obrót ekranu|Rotation"></h3>
         <div class="karty-wyboru" role="radiogroup" id="obrot">
@@ -482,6 +484,7 @@ function rysujUstawieniaPodgladu() {
   $('przelaczanie').value = U.przelaczanie_s > 0 ? '10' : '0';
   $('jezyk-ekranu').value = U.jezyk;
   $('noc').checked = U.noc_wl; $('noc-od').value = U.noc_od; $('noc-do').value = U.noc_do;
+  $('naglowek-polaczenia').checked = U.naglowek_polaczenia !== false;
   $('noc-od').disabled = $('noc-do').disabled = !U.noc_wl;
   zaznaczKarte('obrot', U.orientacja);
   zaznaczKarte('tryb', U.tryb);
@@ -885,6 +888,7 @@ $('odswiezanie').onchange = () => ustaw({ odswiezanie_s: +$('odswiezanie').value
 $('przelaczanie').onchange = () => ustaw({ przelaczanie_s: +$('przelaczanie').value }, 'Zapisano|Saved').then(odswiezStan);
 $('jezyk-ekranu').onchange = () => ustaw({ jezyk: $('jezyk-ekranu').value }, 'Zapisano|Saved').then(() => { wersjaMiniatur++; if (sekcja === 'ekrany') rysujEdytor(); });
 $('noc').onchange = () => ustaw({ noc_wl: $('noc').checked }, 'Zapisano|Saved').then(rysujUstawieniaPodgladu);
+$('naglowek-polaczenia').onchange = () => ustaw({ naglowek_polaczenia: $('naglowek-polaczenia').checked }, 'Zapisano|Saved').then(() => { wersjaMiniatur++; odswiezObraz(); });
 $('noc-od').onchange = () => ustaw({ noc_od: $('noc-od').value }, 'Zapisano|Saved');
 $('noc-do').onchange = () => ustaw({ noc_do: $('noc-do').value }, 'Zapisano|Saved');
 $('czas-ekranu').onchange = () => { ekranyRob[wybranyEdytor].czas_s = +$('czas-ekranu').value; oznacz('ekrany'); rysujMiniatury(); };

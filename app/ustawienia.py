@@ -17,7 +17,7 @@ DOMYSLNE_EKRANY = [
     ("speedtest", False, 10), ("aktualizacje", True, 10), ("zegar", True, 10), ("qr", False, 10),
     # Ekrany z pulpitu homelabbera (E3): włącza je pulpit, pokazują się tylko ze świeżymi danymi.
     ("pulpit_zasilanie", False, 8), ("pulpit_pobieranie", False, 8), ("pulpit_odtwarzanie", False, 8),
-    ("pulpit_kopie", False, 8), ("pulpit_kamery", False, 8),
+    ("pulpit_kopie", False, 8), ("pulpit_kamery", False, 8), ("pulpit_polaczenia", False, 8),
 ]
 KLUCZE_EKRANOW = [k for k, _, _ in DOMYSLNE_EKRANY]
 
@@ -68,6 +68,7 @@ class Ustawienia:
     pogoda_lat: float | None = None
     pogoda_lon: float | None = None
     rodzaje_alertow: dict = field(default_factory=lambda: {k: [True, True] for k in RODZAJE_ALERTOW})
+    naglowek_polaczenia: bool = True  # ikony połączeń z pulpitu homelabbera w nagłówku (gdy pulpit je wysyła)
 
     def popraw(self) -> "Ustawienia":
         """Przycina wartości do bezpiecznych zakresów i uzupełnia brakujące elementy."""
@@ -90,7 +91,7 @@ class Ustawienia:
         if self.kontenery is not None:
             self.kontenery = self.kontenery[:MAKS_KONTENEROW]
         self.progi = _popraw_progi(self.progi)
-        for nazwa in ("krytyczne_przypnij", "krytyczne_jasnosc", "krytyczne_ramka", "pogoda_wl"):
+        for nazwa in ("krytyczne_przypnij", "krytyczne_jasnosc", "krytyczne_ramka", "pogoda_wl", "naglowek_polaczenia"):
             setattr(self, nazwa, bool(getattr(self, nazwa)))
         try:
             co = float(self.speedtest_co_h)

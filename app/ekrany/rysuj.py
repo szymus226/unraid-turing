@@ -144,28 +144,68 @@ def obramowanie(img, dane):
     return img
 
 
+def _kolor_polaczenia(stan: str) -> tuple:
+    return {"ok": KOLORY["ok"], "uwaga": KOLORY["uwaga"], "alarm": KOLORY["alarm"], "gra": KOLORY["akcent"]}.get(stan, KOLORY["szary"])
+
+
+def ikona_polaczenia(d, rodzaj, cx, cy, k, s=6):
+    """Ikona ok. 14 px rysowana liniami: globus, tarcza VPN, tunel, Bluetooth, wysyłanie."""
+    w = 2
+    if rodzaj == "internet":
+        d.ellipse((cx - s, cy - s, cx + s, cy + s), outline=k, width=w)
+        d.ellipse((cx - 3, cy - s, cx + 3, cy + s), outline=k, width=w)
+        d.line((cx - s, cy, cx + s, cy), fill=k, width=w)
+    elif rodzaj == "vpn":
+        d.polygon([(cx, cy - s - 1), (cx + s, cy - s + 3), (cx + s - 1, cy + 2), (cx, cy + s + 1), (cx - s + 1, cy + 2), (cx - s, cy - s + 3)], outline=k, width=w)
+        d.rectangle((cx - 3, cy - 1, cx + 3, cy + 3), fill=k)
+    elif rodzaj == "tunel":
+        d.arc((cx - s, cy - s, cx + s, cy + s + 6), 180, 360, fill=k, width=w)
+        d.line((cx - s, cy + 1, cx - s, cy + s), fill=k, width=w)
+        d.line((cx + s - 1, cy + 1, cx + s - 1, cy + s), fill=k, width=w)
+        d.arc((cx - 3, cy - 2, cx + 3, cy + 8), 180, 360, fill=k, width=w)
+    elif rodzaj == "bt":
+        d.line([(cx - 4, cy - 4), (cx + 4, cy + 4), (cx, cy + s), (cx, cy - s), (cx + 4, cy - 4), (cx - 4, cy + 4)], fill=k, width=w, joint="curve")
+    elif rodzaj == "cast":
+        d.line([(cx - s, cy - 2), (cx - s, cy - s + 1), (cx + s, cy - s + 1), (cx + s, cy + s - 1), (cx + 1, cy + s - 1)], fill=k, width=w)
+        d.arc((cx - s - 8, cy - 1, cx - s + 8, cy + s + 15), 270, 360, fill=k, width=w)
+        d.ellipse((cx - s - 1, cy + s - 3, cx - s + 2, cy + s), fill=k)
+
+
+def ikony_polaczen(d, prawy, ikony, czerwony, lewy) -> float:
+    """Ikony połączeń przed godziną, w kolejności od lewej. Gdy brakuje miejsca, odpadają ostatnie
+    (wysyłanie, Bluetooth), a internet zostaje najdłużej. Zwraca lewy brzeg narysowanych ikon."""
+    fn = font(11, "Bold")
+    szer = [20 + (d.textlength(str(ik["liczba"]), font=fn) + 2 if ik.get("liczba") else 0) for ik in ikony]
+    n = len(ikony)
+    while n and sum(szer[:n]) > prawy - lewy:
+        n -= 1
+    x = prawy - sum(szer[:n])
+    lewy_brzeg = x
+    for ik in ikony[:n]:
+        k = KOLORY["na_alarmie"] if czerwony else _kolor_polaczenia(ik.get("stan", "ok"))
+        ikona_polaczenia(d, ik.get("rodzaj"), x + 12, 20, k)
+        x += 20
+        if ik.get("liczba"):
+            d.text((x, 21), str(ik["liczba"]), font=fn, fill=k, anchor="lm")
+            x += d.textlength(str(ik["liczba"]), font=fn) + 2
+    return lewy_brzeg
+
+
 def naglowek(d, tytul, indeks, dane, w=W):
     """Pasek tytułu; w to szerokość ekranu (480 w układzie poziomym)."""
     krytyczne, ostrzezenia = licznik_alertow(dane)
     indeks = dane.get("_indeks", indeks)          # pozycja w bieżącej kolejce ekranów
     czerwony = bool(krytyczne) and dane.get("_ramka", True)
+    ikony = dane.get("_polaczenia") or []
     # Alert krytyczny barwi nagłówek każdego ekranu na czerwono.
     tlo = KOLORY["alarm"] if czerwony else KOLORY["karta"]
     d.rectangle((0, 0, w, 40), fill=tlo)
     f = font(18, "Bold")
     d.text((M, 20), tytul, font=f, fill=KOLORY["na_alarmie"] if czerwony else KOLORY["tekst"], anchor="lm")
-    d.text((w - M, 20), dane["godzina"], font=font(16, "SemiBold"),
+    fg = font(16, "SemiBold")
+    d.text((w - M, 20), dane["godzina"], font=fg,
            fill=KOLORY["na_alarmie"] if czerwony else KOLORY["szary"], anchor="rm")
-    # Który to ekran: kropki przy maks. 6 ekranach, przy większej liczbie tekst „7/11”.
     razem = dane.get("ekrany_razem", 5)
-    if razem <= 6:
-        for i in range(razem):
-            x = w // 2 + 18 + i * 12
-            if czerwony:
-                kolor = KOLORY["na_alarmie"] if i == indeks else KOLORY["alarm_kropka"]
-            else:
-                kolor = KOLORY["akcent"] if i == indeks else KOLORY["linia"]
-            d.ellipse((x - 3, 17, x + 3, 23), fill=kolor)
     # Licznik: biały z liczbą krytycznych albo żółty z liczbą ostrzeżeń.
     koniec = M + d.textlength(tytul, font=f)
     if krytyczne or ostrzezenia:
@@ -175,6 +215,27 @@ def naglowek(d, tytul, indeks, dane, w=W):
         koniec = x0 + szer
         d.rounded_rectangle((x0, 11, x0 + szer, 29), radius=9, fill=(KOLORY["na_alarmie"] if czerwony else KOLORY["alarm"]) if krytyczne else KOLORY["uwaga"])
         d.text((x0 + szer / 2, 20), tekst, font=font(13, "Bold"), fill=(KOLORY["alarm"] if czerwony else KOLORY["na_alarmie"]) if krytyczne else KOLORY["tlo"], anchor="mm")
+    if ikony:
+        # Ikony połączeń przed godziną; który to ekran pokazuje wtedy cienki pasek z odcinkami na dole nagłówka.
+        ikony_polaczen(d, w - M - d.textlength(dane["godzina"], font=fg) - 10, ikony, czerwony, koniec + 8)
+        seg = (w - 2 * M) / max(1, razem)
+        for i in range(razem):
+            x = M + i * seg
+            if czerwony:
+                kolor = KOLORY["na_alarmie"] if i == indeks else KOLORY["alarm_kropka"]
+            else:
+                kolor = KOLORY["akcent"] if i == indeks else KOLORY["linia"]
+            d.rectangle((x + 1, 37, x + seg - 2, 39), fill=kolor)
+        return
+    # Który to ekran: kropki przy maks. 6 ekranach, przy większej liczbie tekst „7/11”.
+    if razem <= 6:
+        for i in range(razem):
+            x = w // 2 + 18 + i * 12
+            if czerwony:
+                kolor = KOLORY["na_alarmie"] if i == indeks else KOLORY["alarm_kropka"]
+            else:
+                kolor = KOLORY["akcent"] if i == indeks else KOLORY["linia"]
+            d.ellipse((x - 3, 17, x + 3, 23), fill=kolor)
     # Numer ekranu „7/11” tylko, gdy mieści się za tytułem i licznikiem (długie tytuły go chowają).
     if razem > 6:
         numer = f"{indeks + 1}/{razem}"
