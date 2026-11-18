@@ -61,7 +61,8 @@ def opis_sieci(t, s):
     stan = "szary" if internet is None else "ok" if internet else "alarm"
     tekst = "—" if internet is None else t["dziala"] if internet else t["brak"]
     ms = lambda v, miejsca: "—" if v is None else f"{liczba(v, j, miejsca)} ms"
-    router = f"{t['bramka']} {ms(s.get('ping_bramka'), 1)}"
+    # W trybie dodatku kontener nie sięga routera: bez pomiaru i z internetem z pulpitu wiersz zostaje pusty.
+    router = "" if s.get("z_pulpitu") and s.get("ping_bramka") is None else f"{t['bramka']} {ms(s.get('ping_bramka'), 1)}"
     net = f"{t['internet']} {ms(s.get('ping_internet'), 0)}"
     tunel = s.get("tunel")
     tunel_txt = t["nie_uzywany"] if tunel is None else t["dziala"] if tunel else t["brak"]

@@ -114,6 +114,9 @@ z żadną usługą. `DELETE /api/pulpit/ekrany` czyści karty.
 zmieniają się wtedy w cienki pasek pod nagłówkiem. Gdy brakuje miejsca, odpadają ostatnie ikony. Po 2 min bez
 nowych ikon albo po `DELETE /api/pulpit/polaczenia` nagłówek wraca do zwykłego wyglądu. Ustawienie
 „Połączenia w nagłówku” (`naglowek_polaczenia`, domyślnie włączone) wyłącza ikony.
+Ikona `internet` może mieć `ms` (czas odpowiedzi zmierzony przez pulpit): ekran Sieć bierze wtedy stan internetu
+z pulpitu, bo kontener dodatku nie ma wyjścia do internetu. Bez tego ekran pokazuje własny pomiar, a gdy kontener
+nie sięga ani routera, ani internetu, stan jest nieznany (szary), a nie „brak połączenia”.
 
 ### Tryb dodatku (pulpit homelabbera)
 
@@ -191,6 +194,9 @@ and the optional `liczba` is shown next to the icon. The icons are drawn before 
 screen dots turn into a thin bar under the header. When space runs out the last icons are dropped. After 2 min
 without new icons, or after `DELETE /api/pulpit/polaczenia`, the header looks as before. The "Connections in the
 header" setting (`naglowek_polaczenia`, on by default) turns the icons off.
+The `internet` icon may carry `ms` (latency measured by the desktop): the Network screen then takes the internet
+state from the desktop, because the add-on container has no route to the internet. Without it the screen uses its
+own probe; when the container reaches neither the router nor the internet the state is unknown (grey), not "no connection".
 
 **Add-on mode** (homelabber desktop): the "Smart screen" add-on installs this app and has its own settings
 window. It runs the container with `LCD_PANEL=0` (own panel off) and `LCD_TYLKO_TOKEN=1` (every `/api/*`

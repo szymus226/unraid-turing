@@ -403,6 +403,8 @@ class IkonaPolaczenia(BaseModel):
     rodzaj: str = Field(pattern="^(internet|vpn|tunel|bt|cast)$")
     stan: str = Field(default="ok", pattern="^(ok|uwaga|alarm|szary|gra)$")
     liczba: int | None = Field(default=None, ge=0, le=99)
+    # Internet: czas odpowiedzi zmierzony przez pulpit (ekran Sieć w trybie dodatku).
+    ms: float | None = Field(default=None, ge=0, le=60000)
 
 
 class PolaczeniaPulpitu(BaseModel):

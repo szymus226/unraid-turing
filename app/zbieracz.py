@@ -475,6 +475,7 @@ class Zbieracz:
         d["siec"] = {"internet": self.siec.internet, "ping_bramka": self.siec.ping_router,
                      "ping_internet": self.siec.ping_internet, "rx": d["rx"], "tx": d["tx"],
                      "hist_rx": rx, "hist_tx": tx, "tunel": any(k.dziala for k in tunel) if tunel else None}
+        d["siec"].update(siec_z_pulpitu(self.polaczenia_z_pulpitu(teraz)))
         # speedtest
         d["speedtest_wl"] = u.speedtest_co_h > 0
         wyn = self.speedtest.wyniki
@@ -501,3 +502,16 @@ class Zbieracz:
         d["zegar"] = {"godzina": d["godzina"], "dzien_tyg": lok.tm_wday, "dzien": lok.tm_mday, "miesiac": lok.tm_mon,
                       "pogoda": self.pogoda.biezaca}
         return d
+
+
+def siec_z_pulpitu(ikony: list[dict] | None) -> dict:
+    """Stan internetu z ikony pulpitu (świeżej). Pulpit sprawdza internet sam; kontener dodatku nie ma do niego wyjścia."""
+    net = next((i for i in ikony or [] if i.get("rodzaj") == "internet"), None)
+    if not net or net.get("stan") not in ("ok", "uwaga", "alarm"):
+        return {}
+    out = {"internet": net["stan"] != "alarm", "z_pulpitu": True}
+    if net.get("ms") is not None:
+        out["ping_internet"] = net["ms"]
+    elif net["stan"] == "alarm":
+        out["ping_internet"] = None
+    return out

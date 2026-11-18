@@ -439,3 +439,38 @@ def test_kolejnosc_dyskow_z_ustawien(host):
     d = z.dane(z.odczytaj(u), u, adres_panelu="", teraz=0)
     nazwy = {x.etykieta: x.nazwa for x in z.ostatnie.unraid.dyski} if z.ostatnie else {}
     assert [nazwy.get(e[0], e[0]) for e in d["dyski"]] == ["cache", "disk1"]
+
+
+def test_siec_bez_wyjscia_jest_nieznana(monkeypatch):
+    """Kontener dodatku bez sieci: brak routera i internetu to stan nieznany, nie „brak połączenia”."""
+    from app.odczyt import siec
+    m = siec.MonitorSieci("/nie-ma")
+    monkeypatch.setattr(siec, "czas_tcp", lambda *a, **k: None)
+    m.pomiar()
+    assert m.internet is None
+    monkeypatch.setattr(siec, "brama_domyslna", lambda *_: "192.0.2.1")
+    monkeypatch.setattr(siec, "czas_tcp", lambda adres, *a, **k: 1.5 if adres == "192.0.2.1" else None)
+    m.pomiar()
+    assert m.internet is False and m.ping_router == 1.5
+
+
+def test_siec_z_pulpitu():
+    from app.zbieracz import siec_z_pulpitu
+    assert siec_z_pulpitu(None) == {}
+    assert siec_z_pulpitu([{"rodzaj": "internet", "stan": "szary"}]) == {}
+    assert siec_z_pulpitu([{"rodzaj": "vpn", "stan": "ok"}, {"rodzaj": "internet", "stan": "ok", "ms": 77}]) == {"internet": True, "z_pulpitu": True, "ping_internet": 77}
+    assert siec_z_pulpitu([{"rodzaj": "internet", "stan": "alarm"}]) == {"internet": False, "z_pulpitu": True, "ping_internet": None}
+
+
+def test_historia_ruchu_po_starcie_ma_probki():
+    """Zaraz po starcie wykres rysuje ostatnie odczyty, a nie 2–3 średnie z minut."""
+    from app.odczyt.siec import HistoriaRuchu
+    h = HistoriaRuchu()
+    for i in range(150):
+        h.dodaj(1e6 * (i % 7), 2e5, teraz=1000 * 60 + i * 1.0)
+    rx, tx = h.serie()
+    assert len(rx) == 120 and len(tx) == 120
+    for i in range(12 * 60):
+        h.dodaj(1e6, 2e5, teraz=2000 * 60 + i * 5.0)
+    rx, _ = h.serie()
+    assert 10 <= len(rx) <= 61
