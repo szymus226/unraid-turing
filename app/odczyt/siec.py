@@ -69,7 +69,9 @@ class MonitorSieci:
             if internet is not None:
                 break
         self.ping_internet = internet
-        self.internet = internet is not None
+        # Bez odpowiedzi także od routera kontener nie ma wyjścia do sieci (np. sieć dodatków pulpitu bez
+        # internetu): stan jest nieznany, a nie „brak połączenia”. Wtedy internet podaje pulpit.
+        self.internet = True if internet is not None else (False if router is not None else None)
 
     def start(self) -> None:
         threading.Thread(target=self._dzialaj, name="siec", daemon=True).start()
@@ -89,9 +91,13 @@ class MonitorSieci:
 class HistoriaRuchu:
     """Średni ruch LAN z każdej minuty ostatniej godziny (do wykresu na ekranie Sieć)."""
 
+    MIN_MINUT = 10
+
     def __init__(self):
         self.minuty: deque = deque(maxlen=60)
         self._biezaca: list | None = None   # [minuta, suma_rx, suma_tx, n]
+        # Ostatnie odczyty: wykres po starcie aplikacji, zanim zbierze się kilka minut (zamiast 2–3 punktów).
+        self.probki: deque = deque(maxlen=120)
 
     def dodaj(self, rx_bps: float, tx_bps: float, teraz: float | None = None) -> None:
         minuta = int((time.time() if teraz is None else teraz) // 60)
@@ -102,11 +108,14 @@ class HistoriaRuchu:
         if not self._biezaca:
             self._biezaca = [minuta, 0.0, 0.0, 0]
         self._biezaca[1] += rx_bps; self._biezaca[2] += tx_bps; self._biezaca[3] += 1
+        self.probki.append((rx_bps, tx_bps))
 
     def serie(self) -> tuple[list[float], list[float]]:
         punkty = list(self.minuty)
         if self._biezaca and self._biezaca[3]:
             punkty.append((self._biezaca[1] / self._biezaca[3], self._biezaca[2] / self._biezaca[3]))
+        if len(punkty) < self.MIN_MINUT and len(self.probki) > len(punkty):
+            punkty = list(self.probki)
         if len(punkty) < 2:
             punkty = (punkty or [(0.0, 0.0)]) * 2
         return [p[0] / 1e6 for p in punkty], [p[1] / 1e6 for p in punkty]
